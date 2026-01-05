@@ -105,7 +105,12 @@ paths:
       tags:
       - Connectors
       summary: Create a new connector
-      description: Creates a new connector. Requires Admin policy.
+      description: |
+        Creates a new connector. Requires Admin policy.
+
+        **API Token (optional, write-only)**
+        - Request may include `apiToken` (and `apiTokenSpecified=true`) to store an encrypted bearer token.
+        - Response never returns the token; it only exposes `hasApiToken=true/false`.
       requestBody:
         required: true
         content:
@@ -161,7 +166,14 @@ paths:
       tags:
       - Connectors
       summary: Update connector
-      description: Updates an existing connector. Requires Admin policy.
+      description: |
+        Updates an existing connector. Requires Admin policy.
+
+        **API Token update semantics (write-only)**
+        - `apiTokenSpecified` absent/false => ignore `apiToken` and keep existing token
+        - `apiTokenSpecified=true` + `apiToken=null` => remove token
+        - `apiTokenSpecified=true` + `apiToken=<string>` => replace token
+        - Token value is never returned (responses only include `hasApiToken`).
       requestBody:
         required: true
         content:

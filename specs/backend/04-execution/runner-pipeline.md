@@ -33,3 +33,19 @@ Em conflito: sobrescreve. Keys: case-insensitive.
 ## Falhas
 - Sempre log ExecutionFailed com step e errorCode
 - Retornar exit code != 0 conforme `cli-contract.md`
+
+
+
+## Connector API Token (encrypted)
+Se o Connector possuir token armazenado (`hasApiToken=true`), o Runner deve:
+
+1) Carregar o payload criptografado em `connector_tokens`
+2) Decriptografar usando `METRICS_SECRET_KEY` (base64 32 bytes)
+3) Injetar no FetchSource como:
+   - `Authorization: Bearer <token>`
+4) Nunca logar o token (nem em modo debug)
+
+**Falhas**
+- Se a decriptação falhar, o Runner deve encerrar com:
+  - exit code **40 (SOURCE_ERROR)**
+  - log `ExecutionFailed` com `errorCode=TOKEN_DECRYPT_FAILED` (ou equivalente)

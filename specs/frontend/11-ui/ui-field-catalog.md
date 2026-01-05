@@ -160,6 +160,9 @@ Route: `/connectors`
 | `connectors.dialog.name` | `Connector.name` | string | `MatInput` | sim | trim; min 3; max 128 | `connectorDraft.name` | Mín. 3, Máx. 128 caracteres. |
 | `connectors.dialog.baseUrl` | `Connector.baseUrl` | url | `MatInput` | sim | trim; validar URL (http/https) | `connectorDraft.baseUrl` | URL inválida. |
 | `connectors.dialog.authRef` | `Connector.authRef` | string | `MatInput` | sim | trim; não permitir vazio | `connectorDraft.authRef` | Campo obrigatório. |
+| `connectors.dialog.apiToken` | `Connector.apiToken` | password | `MatInput` (type=password) | não | trim; min 1; max 4096; **não persistir em state após salvar** | `connectorDraft.apiToken` | Token inválido. (mín. 1, máx. 4096) |
+| `connectors.dialog.apiTokenConfigured` | `Connector.hasApiToken` | boolean (read-only) | `MatChip` / label | — | — | `connector.hasApiToken` | — |
+| `connectors.dialog.clearApiToken` | `ui.connectors.clearApiToken` | action | `MatButton` | — | — | UI | — |
 | `connectors.dialog.timeoutSeconds` | `Connector.timeoutSeconds` | number | `MatInput` (type=number) | sim | inteiro; min 1 | `connectorDraft.timeoutSeconds` | O timeout deve ser maior ou igual a 1. |
 
 ---

@@ -28,7 +28,7 @@ Remove arquivos antigos conforme retenção.
 - 10 VALIDATION_ERROR
 - 20 NOT_FOUND
 - 30 DISABLED
-- 40 SOURCE_ERROR
+- 40 SOURCE_ERROR (ex.: falha ao buscar fonte externa, timeout, HTTP 5xx, ou **falha ao decriptografar connector apiToken**)
 - 50 TRANSFORM_ERROR
 - 60 STORAGE_ERROR
 - 70 UNEXPECTED_ERROR
@@ -42,6 +42,7 @@ Remove arquivos antigos conforme retenção.
 Para suportar execução determinística e **integration tests**, o Runner deve respeitar:
 
 - `METRICS_SQLITE_PATH`: caminho do arquivo SQLite.
+- `METRICS_SECRET_KEY`: chave **base64 (32 bytes)** usada para criptografar/decriptografar `connector.apiToken` (AES-256-GCM). **Fail-fast** se ausente/ inválida.
 - `METRICS_SECRET__<authRef>`: segredo para resolver `connector.authRef`.
 
 Essas chaves são normativas para a suíte `Integration.Tests`.

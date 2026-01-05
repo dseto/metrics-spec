@@ -37,3 +37,22 @@ Base: `/api/admin/auth/users` (Admin)
 Regras:
 - nunca retornar password_hash
 - auditar alterações (quem fez o quê)
+
+
+## Detalhes importantes (implementação observável)
+
+### Username case-insensitive
+- Login e operações admin devem tratar `username` como **case-insensitive** para lookup.
+- Regra normativa para queries: `LOWER(username) = LOWER(@username)` (evitar normalizar o parâmetro no client).
+
+### Buscar usuário por username (Admin)
+Novo endpoint (Admin only) para evitar ambiguidade com o endpoint por `id`:
+
+**GET /api/admin/auth/users/by-username/{username}**
+- 200: retorna `UserDto`
+- 404: usuário não encontrado
+- 401/403: conforme políticas (JWT + role Admin)
+
+Observação:
+- `GET /api/admin/auth/users/{id}` continua sendo lookup por **UUID/id interno**, não por username.
+

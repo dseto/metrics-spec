@@ -107,7 +107,49 @@ Para viabilizar testes E2E repetíveis, **API e Runner** devem suportar estas co
   - logs indicam step FetchSource e errorCode correspondente
 
 > Observação: Blob/Azurite é opcional nesta versão (somente se `--blob on` for suportado).  
-> Se suportado, adicionar IT04 usando **Azurite** (testcontainers) para validar upload.
+> Se suportado, adicionar **IT06** usando **Azurite** (testcontainers) para validar upload. (Nota: o identificador IT04 foi reservado para Version Lifecycle.)
+
+
+
+### IT04 — Process Version Lifecycle (CRUD completo)
+Objetivo: garantir o ciclo de vida completo de versões via API, incluindo erros.
+
+Casos mínimos (implementados):
+- IT04-01 Create single version (201)
+- IT04-02 Read version by id (200)
+- IT04-03 List all versions (200)
+- IT04-04 Update version DSL (200) + persistência
+- IT04-05 Enable/Disable version (PATCH) (200)
+- IT04-06 Multi-version scenario (max version selection)
+- IT04-07 Conflict on create (409)
+- IT04-08 Invalid schema returns 400
+- IT04-09 Delete version (204) + NotFound após (404)
+- IT04-10 Preview endpoint with version (200/400)
+- IT04-11 Version not found (404)
+- IT04-12 Schema validation in preview (400)
+
+Critérios:
+- Deve validar contratos `processVersion.schema.json` e comportamento do `/preview/transform`.
+- Deve rodar sempre no CI (não condicional).
+
+### IT05 — Real LLM Integration (OpenRouter)
+Objetivo: validar integração real com provedor de LLM (sem mocks), com tolerância a falhas.
+
+Requisitos:
+- `METRICS_OPENROUTER_API_KEY` (ou `OPENROUTER_API_KEY`) presente no ambiente do teste.
+
+Critérios:
+- Aceitar **200 OK** (output válido) **ou** **502 Bad Gateway** (falha do provedor / output inválido).
+- Se 200, o DSL + schema gerados devem ser executáveis (quando aplicável).
+- Recomendado rodar no CI como job separado/condicional por segredo.
+
+## Como rodar (exemplos)
+- Apenas IT04:
+  - `dotnet test tests/Integration.Tests --filter "FullyQualifiedName~IT04"`
+- Apenas IT05:
+  - `dotnet test tests/Integration.Tests --filter "FullyQualifiedName~IT05"`
+- Todos:
+  - `dotnet test tests/Integration.Tests`
 
 ---
 

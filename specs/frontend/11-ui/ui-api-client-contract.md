@@ -7,13 +7,26 @@ Objetivo: especificar o client HTTP da UI (tipos, normalização, erros) para re
 ---
 
 ## Base URL e headers
-- Base URL: `/api`
+- Base URL: carregada via **RuntimeConfigService** (ex.: `config.json`), com fallback para `/api` quando aplicável.
+  - Exemplo: `apiBaseUrl = http://localhost:8080/api/v1`
 - Header padrão: `Content-Type: application/json`
 - Header **obrigatório**: `X-Correlation-Id` (UUID gerado pelo client para rastreamento)
 
 ---
 
 ## Tipos (DTOs)
+
+
+### Connector (extensão: API Token)
+- `apiToken`: write-only (string|null). Nunca vem no GET.
+- `hasApiToken`: read-only boolean para indicar presença.
+- `apiTokenSpecified`: write-only boolean necessário no PUT para distinguir omitido vs null.
+
+**Regra de envio (PUT)**
+- manter token: não enviar `apiToken` e não enviar `apiTokenSpecified`
+- remover: enviar `{ apiTokenSpecified: true, apiToken: null }`
+- substituir: enviar `{ apiTokenSpecified: true, apiToken: "<token>" }`
+
 > Derivados do OpenAPI em `specs/shared/openapi/config-api.yaml`.
 
 ### ProcessDto

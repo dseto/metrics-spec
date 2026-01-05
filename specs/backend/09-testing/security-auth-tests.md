@@ -5,6 +5,7 @@
 2) Token inválido => 401
 3) Reader em endpoint Admin => 403
 4) Admin em endpoint Admin => 200/201/204
+4.1) GET /api/admin/auth/users/by-username/{username} => 200 (case-insensitive), 404 se não existir
 5) POST /api/auth/token:
    - credenciais válidas => 200 com token
    - usuário inativo => 401

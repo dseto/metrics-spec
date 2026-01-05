@@ -1,13 +1,3 @@
-# SQLite Schema (Config DB)
-
-Data: 2026-01-02
-
-Banco local (SQLite) para armazenar Connectors, Processes e ProcessVersions.
-
-> Observação: objetos JSON (ex.: `outputSchema`) são persistidos como TEXT (JSON string).
-
-## Tabelas
-
 ### connectors
 | column | type | notes |
 |---|---|---|
@@ -19,6 +9,24 @@ Banco local (SQLite) para armazenar Connectors, Processes e ProcessVersions.
 | enabled | INTEGER | 0/1 |
 | createdAt | TEXT | ISO |
 | updatedAt | TEXT | ISO |
+
+
+### connector_tokens
+Tabela 1:1 (connectorId) para armazenar **token criptografado** (não armazenar plaintext).
+
+| column | type | notes |
+|---|---|---|
+| connectorId | TEXT PK | FK -> connectors(id), ON DELETE CASCADE |
+| encVersion | INTEGER | versionamento do payload criptografado (iniciar em 1) |
+| encAlg | TEXT | algoritmo (ex.: `AES-256-GCM`) |
+| encNonce | TEXT | nonce/IV (base64) |
+| encCiphertext | TEXT | ciphertext (base64) |
+| createdAt | TEXT | ISO |
+| updatedAt | TEXT | ISO |
+
+Observações:
+- A chave `METRICS_SECRET_KEY` deve ser **base64 de 32 bytes** (AES-256).
+- Tokens **nunca** devem aparecer em logs / exceptions / responses.
 
 ### processes
 | column | type | notes |

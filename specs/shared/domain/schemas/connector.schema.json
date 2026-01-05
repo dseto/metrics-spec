@@ -32,6 +32,35 @@
       "maxLength": 200,
       "description": "Reference to an auth secret in appsettings/config (do not store secrets in SQLite)."
     },
+    "apiToken": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "writeOnly": true,
+      "description": "Bearer API token/key associado ao Connector. ⚠️ Nunca é retornado pela API. Semântica no PUT: requer apiTokenSpecified=true. Com apiTokenSpecified=true: null=remove token; string=substitui token. Com apiTokenSpecified ausente/false: apiToken é ignorado e o token atual é mantido.",
+      "examples": [
+        "<redacted>",
+        null
+      ]
+    },
+    "apiTokenSpecified": {
+      "type": "boolean",
+      "default": false,
+      "writeOnly": true,
+      "description": "Flag necessária para distinguir campo omitido vs null no update. No PUT /connectors/{id}: false/ausente => manter token existente; true + apiToken=null => remover; true + apiToken=string => substituir."
+    },
+    "hasApiToken": {
+      "type": "boolean",
+      "readOnly": true,
+      "description": "Indica se existe um API token configurado para este connector. O valor do token nunca é retornado."
+    },
     "timeoutSeconds": {
       "type": "integer",
       "minimum": 1,
@@ -65,6 +94,15 @@
       "authRef": "dynatrace-prod-token",
       "timeoutSeconds": 60,
       "enabled": true
+    },
+    {
+      "id": "dynatrace-prod",
+      "name": "Dynatrace - PROD",
+      "baseUrl": "https://dynatrace.example/api/v2",
+      "authRef": "dynatrace-prod-token",
+      "timeoutSeconds": 60,
+      "enabled": true,
+      "hasApiToken": true
     }
   ]
 }

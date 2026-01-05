@@ -70,6 +70,22 @@ Erros (mínimo):
 
 ---
 
+
+### API Token (encrypted) — comportamento observável
+- `apiToken` é **write-only**:
+  - nunca é retornado em GET
+  - nunca deve ser logado
+  - `hasApiToken` indica somente presença/ausência
+- Validação:
+  - `apiToken` quando string: `minLength=1`, `maxLength=4096` (strings vazias => 400)
+- Semântica de update (PUT `/connectors/{id}`):
+  - `apiTokenSpecified` ausente/false => manter token existente (campo ignorado)
+  - `apiTokenSpecified=true` + `apiToken=null` => remover token
+  - `apiTokenSpecified=true` + `apiToken=string` => substituir token
+- Precedência de autenticação (FetchSource):
+  - se existir token: Runner injeta `Authorization: Bearer <token>`
+  - authRef continua existindo para compatibilidade, mas o token tem precedência para `Authorization`
+
 ## Preview
 
 ### POST /preview/transform
