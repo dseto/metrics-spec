@@ -50,13 +50,13 @@ Para viabilizar testes E2E repetíveis, **API e Runner** devem suportar estas co
   - Caso contrário, pode usar um default (ex.: `./data/metrics.db`).
 
 ### Secrets (AuthRef)
-- Para resolver `Connector.authRef`, o runner deve suportar:
+- Para resolver `Connector.REMOVIDO_REMOVIDO_authRef`, o runner deve suportar:
   - Env var: `METRICS_SECRET__<AUTHREF>`
 - Exemplo:
-  - authRef: `api_key_prod`
+  - REMOVIDO_REMOVIDO_authRef: `api_key_prod`
   - env: `METRICS_SECRET__api_key_prod=TEST_TOKEN`
 - Regra:
-  - Se não existir secret para o `authRef`, o runner falha com `SOURCE_ERROR` (exit code 40).
+  - Se não existir secret para o `REMOVIDO_REMOVIDO_authRef`, o runner falha com `SOURCE_ERROR` (exit code 40).
   - Em requisições HTTP, enviar `Authorization: Bearer <secret>`.
 
 ---
@@ -83,7 +83,7 @@ Para viabilizar testes E2E repetíveis, **API e Runner** devem suportar estas co
 - Sobe API com WebApplicationFactory (mesmo SQLite do teste)
 - Cria via API:
   - Connector.baseUrl = URL do mock server
-  - authRef = `api_key_prod`
+  - REMOVIDO_REMOVIDO_authRef = `api_key_prod`
   - Process + Version com:
     - SourceRequest: method GET, path `/v1/servers`, queryParams `limit=100`, `filter=active`
     - DSL: `hosts-cpu-dsl.jsonata`
@@ -175,3 +175,24 @@ Critérios:
   - Engine.Tests
   - **Integration.Tests** (incluindo IT02 e IT03)
 - Integration tests validam **FetchSource via HTTP** (mock server) e geração real de CSV.
+
+
+---
+
+## Delta 1.2.0 — Novos cenários obrigatórios
+
+### Processes / Versions
+- GET `/api/v1/processes/{processId}/versions` deve retornar 200 e lista ordenada por `version asc`.
+- Deve nunca retornar 405 (rota deve existir com GET).
+
+### Connectors / Delete
+- DELETE `/api/v1/connectors/{id}` retorna 204 em sucesso.
+- DELETE retorna 409 quando connector está em uso por processo/version.
+
+### Connector Flex (Auth)
+- Runner deve injetar auth BEARER quando connector authType=BEARER e token configurado.
+- Runner deve suportar mais 1 tipo adicional (API_KEY ou BASIC) e validar injeção no request final.
+
+### Body + Content-Type
+- Para método POST: o runner deve enviar body conforme `sourceRequest.body` (ou defaults).
+- Se body for objeto/array e contentType não for definido, usar application/json.

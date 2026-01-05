@@ -8,7 +8,6 @@
     "id",
     "name",
     "baseUrl",
-    "authRef",
     "timeoutSeconds"
   ],
   "properties": {
@@ -25,12 +24,6 @@
       "minLength": 3,
       "maxLength": 2048,
       "format": "uri"
-    },
-    "authRef": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 200,
-      "description": "Reference to an auth secret in appsettings/config (do not store secrets in SQLite)."
     },
     "apiToken": {
       "oneOf": [
@@ -84,6 +77,146 @@
         "null"
       ],
       "format": "date-time"
+    },
+    "authType": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "BEARER",
+        "API_KEY",
+        "BASIC"
+      ],
+      "default": "NONE",
+      "description": "Tipo de autenticação do Connector. BEARER usa apiToken; API_KEY usa apiKeyName+apiKeyLocation+apiKeyValue; BASIC usa basicUsername+basicPassword."
+    },
+    "apiKeyLocation": {
+      "type": "string",
+      "enum": [
+        "HEADER",
+        "QUERY"
+      ],
+      "description": "Somente quando authType=API_KEY: onde injetar o apiKeyName=apiKeyValue."
+    },
+    "apiKeyName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Somente quando authType=API_KEY: nome do parâmetro (ex.: X-API-Key ou api_key)."
+    },
+    "apiKeyValue": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "writeOnly": true,
+      "description": "Somente quando authType=API_KEY: valor secreto (writeOnly). Usar apiKeySpecified para update/removal.",
+      "examples": [
+        "<redacted>",
+        null
+      ]
+    },
+    "apiKeySpecified": {
+      "type": "boolean",
+      "description": "Semântica PUT: true => aplicar apiKeyValue (string) ou remover (null). Ausente/false => manter."
+    },
+    "hasApiKey": {
+      "type": "boolean",
+      "description": "Indica se existe API key configurada (somente leitura). Nunca retorna o valor."
+    },
+    "basicUsername": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 256,
+      "description": "Somente quando authType=BASIC: usuário (não-secreto)."
+    },
+    "basicPassword": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "writeOnly": true,
+      "description": "Somente quando authType=BASIC: senha (writeOnly). Usar basicPasswordSpecified para update/removal.",
+      "examples": [
+        "<redacted>",
+        null
+      ]
+    },
+    "basicPasswordSpecified": {
+      "type": "boolean",
+      "description": "Semântica PUT: true => aplicar basicPassword (string) ou remover (null). Ausente/false => manter."
+    },
+    "hasBasicPassword": {
+      "type": "boolean",
+      "description": "Indica se existe senha BASIC configurada (somente leitura)."
+    },
+    "requestDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Defaults opcionais aplicados a todas as chamadas via este connector. O ProcessVersion.sourceRequest pode sobrescrever.",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "description": "Default method sugerido para a UI/runner (version pode sobrescrever)."
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Headers default (merge)."
+        },
+        "queryParams": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Query params default (merge)."
+        },
+        "body": {
+          "description": "Body default (usado quando o version não definir body). Aceita JSON (obj/array) ou string.",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "type": "array"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contentType": {
+          "type": "string",
+          "description": "Content-Type default (override). Ex.: application/json."
+        }
+      }
     }
   },
   "examples": [
@@ -91,7 +224,7 @@
       "id": "dynatrace-prod",
       "name": "Dynatrace - PROD",
       "baseUrl": "https://dynatrace.example/api/v2",
-      "authRef": "dynatrace-prod-token",
+      "REMOVIDO_authRef": "dynatrace-prod-token",
       "timeoutSeconds": 60,
       "enabled": true
     },
@@ -99,7 +232,7 @@
       "id": "dynatrace-prod",
       "name": "Dynatrace - PROD",
       "baseUrl": "https://dynatrace.example/api/v2",
-      "authRef": "dynatrace-prod-token",
+      "REMOVIDO_authRef": "dynatrace-prod-token",
       "timeoutSeconds": 60,
       "enabled": true,
       "hasApiToken": true

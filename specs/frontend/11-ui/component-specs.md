@@ -167,7 +167,7 @@ type ConnectorRow = {
   id: string;
   name: string;
   baseUrl: string;
-  authRef: string;
+  REMOVIDO_REMOVIDO_authRef: string;
   timeoutSeconds: number;
 };
 ```
@@ -437,3 +437,12 @@ Recomendado criar testes unitários (não E2E) para:
 - Actions: Generate (calls API), Apply (emit suggested dsl+schema)
 - States: idle/loading/success/error/disabled
 - Uses Material 3: filled text fields, tonal button, progress indicator, banners.
+
+
+---
+
+## Delta 1.2.0 — Connector fields (UI)
+- Remover qualquer input/validação de `REMOVIDO_authRef`.
+- Adicionar seletor `authType` e campos por tipo.
+- Não exibir segredos; apenas indicadores `hasApiToken/hasApiKey/hasBasicPassword`.
+- Adicionar botão Delete em cada linha, chamando DELETE `/api/v1/connectors/{id}` com tratamento 409.

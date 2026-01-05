@@ -4,51 +4,33 @@
 | id | TEXT PK | |
 | name | TEXT | |
 | baseUrl | TEXT | |
-| authRef | TEXT | referência a segredo/config (não guardar segredo aqui) |
+| authType | TEXT | NONE/BEARER/API_KEY/BASIC |
+| authConfigJson | TEXT | JSON não-secreto (API_KEY: name/location; BASIC: username) |
+| requestDefaultsJson | TEXT | JSON (method/headers/query/body/contentType) |
 | timeoutSeconds | INTEGER | |
 | enabled | INTEGER | 0/1 |
 | createdAt | TEXT | ISO |
 | updatedAt | TEXT | ISO |
 
-
-### connector_tokens
-Tabela 1:1 (connectorId) para armazenar **token criptografado** (não armazenar plaintext).
+### connector_secrets
+Tabela N:1 (connectorId, secretKind) para armazenar **secrets criptografados** (writeOnly na API).
 
 | column | type | notes |
 |---|---|---|
-| connectorId | TEXT PK | FK -> connectors(id), ON DELETE CASCADE |
-| encVersion | INTEGER | versionamento do payload criptografado (iniciar em 1) |
-| encAlg | TEXT | algoritmo (ex.: `AES-256-GCM`) |
-| encNonce | TEXT | nonce/IV (base64) |
-| encCiphertext | TEXT | ciphertext (base64) |
-| createdAt | TEXT | ISO |
-| updatedAt | TEXT | ISO |
-
-Observações:
-- A chave `METRICS_SECRET_KEY` deve ser **base64 de 32 bytes** (AES-256).
-- Tokens **nunca** devem aparecer em logs / exceptions / responses.
-
-### processes
-| column | type | notes |
-|---|---|---|
-| id | TEXT PK | |
-| name | TEXT | |
-| description | TEXT | nullable |
-| status | TEXT | Draft/Active/Disabled |
 | connectorId | TEXT FK | -> connectors.id |
-| tagsJson | TEXT | JSON array (nullable) |
+| secretKind | TEXT | BEARER_TOKEN / API_KEY_VALUE / BASIC_PASSWORD |
+| encVersion | INTEGER | |
+| encAlg | TEXT | Ex.: AES-256-GCM |
+| encNonce | TEXT | base64 |
+| encCiphertext | TEXT | base64 |
 | createdAt | TEXT | ISO |
 | updatedAt | TEXT | ISO |
 
-### process_output_destinations
-| column | type | notes |
-|---|---|---|
-| processId | TEXT FK | -> processes.id |
-| idx | INTEGER | 0..n-1 |
-| type | TEXT | LocalFileSystem / AzureBlobStorage |
-| configJson | TEXT | JSON (ex.: local/basePath ou blob/container/...) |
+PK: (connectorId, secretKind)
 
-PK: (processId, idx)
+### connector_tokens (LEGACY)
+Tabela 1:1 (connectorId) para armazenar **token bearer criptografado** (compatibilidade).  
+A partir da versão 1.2.0 o storage padrão é `connector_secrets`.
 
 ### process_versions
 | column | type | notes |
@@ -60,6 +42,8 @@ PK: (processId, idx)
 | path | TEXT | |
 | headersJson | TEXT | JSON map (nullable) |
 | queryParamsJson | TEXT | JSON map (nullable) |
+| bodyText | TEXT | Body (string ou JSON serializado) (nullable) |
+| contentType | TEXT | Content-Type override (nullable) |
 | dslProfile | TEXT | jsonata/jmespath/custom |
 | dslText | TEXT | |
 | outputSchemaJson | TEXT | JSON Schema (TEXT) |

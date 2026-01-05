@@ -84,7 +84,7 @@ Erros (mínimo):
   - `apiTokenSpecified=true` + `apiToken=string` => substituir token
 - Precedência de autenticação (FetchSource):
   - se existir token: Runner injeta `Authorization: Bearer <token>`
-  - authRef continua existindo para compatibilidade, mas o token tem precedência para `Authorization`
+  - REMOVIDO_REMOVIDO_authRef continua existindo para compatibilidade, mas o token tem precedência para `Authorization`
 
 ## Preview
 
@@ -100,3 +100,35 @@ Erros (mínimo):
 ## Idempotência (mínimo)
 - POST não é idempotente
 - PUT é idempotente (mesmo payload -> mesmo estado)
+
+
+---
+
+## Delta 1.2.0 — Connectors Flex / Process Versions / Delete Connector
+
+### GET /processes/{processId}/versions
+- Endpoint **obrigatório**: o frontend utiliza este GET para listar versões.
+- Resposta 200: array de `ProcessVersion` ordenado por `version asc`.
+- 404: processo inexistente.
+- Backend **não pode** responder 405.
+
+### DELETE /connectors/{connectorId}
+- 204: removido.
+- 404: não existe.
+- 409: connector em uso por um ou mais processos (regra de domínio).
+
+### Autenticação do Connector
+Campo `authType`:
+- NONE: sem auth.
+- BEARER: injeta `Authorization: Bearer <apiToken>` quando `hasApiToken=true`.
+- API_KEY: injeta `apiKeyName=apiKeyValue` em header ou query conforme `apiKeyLocation`.
+- BASIC: injeta `Authorization: Basic base64(username:password)`.
+
+Regras:
+- O runner injeta auth **após** o merge de headers/query/body.
+- Não sobrescrever header/query explicitamente definido na versão.
+
+### Defaults de request (connector.requestDefaults)
+- `headers` e `queryParams`: merge (defaults primeiro; version sobrescreve).
+- `body` e `contentType`: version vence; senão defaults.
+- Se body for objeto/array e contentType não estiver definido, usar `application/json`.

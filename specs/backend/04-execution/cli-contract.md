@@ -43,6 +43,18 @@ Para suportar execução determinística e **integration tests**, o Runner deve 
 
 - `METRICS_SQLITE_PATH`: caminho do arquivo SQLite.
 - `METRICS_SECRET_KEY`: chave **base64 (32 bytes)** usada para criptografar/decriptografar `connector.apiToken` (AES-256-GCM). **Fail-fast** se ausente/ inválida.
-- `METRICS_SECRET__<authRef>`: segredo para resolver `connector.authRef`.
 
 Essas chaves são normativas para a suíte `Integration.Tests`.
+
+---
+
+## Delta 1.2.0 — Secrets e Connector Flex
+
+- `REMOVIDO_authRef` foi removido.
+- Secrets são persistidos no SQLite, criptografados com `METRICS_SECRET_KEY`.
+- Storage recomendado: tabela `connector_secrets` (multi-secret).
+- A tabela `connector_tokens` permanece como LEGACY para compatibilidade/migração.
+
+Runner:
+- Deve suportar `authType`: NONE, BEARER, API_KEY, BASIC.
+- Deve suportar merge de `connector.requestDefaults` + `processVersion.sourceRequest`.

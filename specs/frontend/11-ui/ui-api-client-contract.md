@@ -77,7 +77,34 @@ type ConnectorDto = {
   id: string;
   name: string;
   baseUrl: string;
-  authRef: string;
+
+  // Delta 1.2.0
+  authType: 'NONE' | 'BEARER' | 'API_KEY' | 'BASIC';
+  apiKeyLocation?: 'HEADER' | 'QUERY';
+  apiKeyName?: string;
+  basicUsername?: string;
+
+  // secrets write-only (PUT semantics via *Specified)
+  apiToken?: string | null;
+  apiTokenSpecified?: boolean;
+  hasApiToken?: boolean;
+
+  apiKeyValue?: string | null;
+  apiKeySpecified?: boolean;
+  hasApiKey?: boolean;
+
+  basicPassword?: string | null;
+  basicPasswordSpecified?: boolean;
+  hasBasicPassword?: boolean;
+
+  requestDefaults?: {
+    method?: 'GET' | 'POST';
+    headers?: Record<string, string>;
+    queryParams?: Record<string, string>;
+    body?: any;
+    contentType?: string;
+  };
+
   timeoutSeconds: number;
   enabled?: boolean;
 };
@@ -144,7 +171,7 @@ type ApiError = {
 
 ### Strings
 	Aplicar `trim()` em **todos** os campos de string antes de enviar para a API:
-	- `id`, `name`, `description`, `connectorId`, `baseUrl`, `authRef`, `path`, `tags[]`
+	- `id`, `name`, `description`, `connectorId`, `baseUrl`, `path`, `tags[]`
 	
 	Rejeitar string vazia após trim para campos obrigatórios.
 	

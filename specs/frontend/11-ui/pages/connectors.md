@@ -1,51 +1,72 @@
 # Page — Connectors
 
-    Data: 2026-01-01
+Data: 2026-01-05
 
-    ## Route
-    - `/connectors`
+## Route
+- `/connectors`
 
-    ## Purpose
-    - CRUD de Connectors (baseUrl, authRef, timeout).
+## Purpose
+CRUD de Connectors para chamadas a APIs externas:
+- baseUrl
+- autenticação (NONE/BEARER/API_KEY/BASIC)
+- defaults de request (método, headers, query, body, contentType)
+- delete connector (com regra 409 em uso)
 
-## Referência visual
-- `visual/mockups/A_UI_design_mockup_in_Material_Design_3_(Material_.png`
-## Layout (responsive)
-- Top bar com 'New connector'.
-- Tabela com ações edit/delete.
-- < md: lista compacta.
-## Components
-- MsConnectorTable / MsConnectorListCompact
-- MsConnectorEditorDialog
-- MsErrorBanner
+## API dependencies
+- GET `/api/v1/connectors`
+- POST `/api/v1/connectors`
+- GET `/api/v1/connectors/{connectorId}`
+- PUT `/api/v1/connectors/{connectorId}`
+- DELETE `/api/v1/connectors/{connectorId}`
 
-## Data binding (container -> components)
-- `connectorsState.items -> MsConnectorTable.rows`
-- `connectorsState.loading -> MsConnectorTable.loading`
-- `connectorsState.error -> MsErrorBanner.error`
-## Actions
-- New/Edit abre dialog; Save chama API; snackbar
-- Delete -> confirm dialog
+## List / Table
+Colunas sugeridas:
+- Id
+- Name
+- Base URL
+- Auth Type
+- Indicadores:
+  - Token configurado (hasApiToken)
+  - API Key configurada (hasApiKey)
+  - Basic password configurada (hasBasicPassword)
+- Timeout
+- Enabled
+- Actions: Edit, Delete
 
-## A11y
-- Dialog com focus trap; first focus no campo Name.
+## Create / Edit dialog
 
+### Fields (non-secret)
+- id (create only)
+- name
+- baseUrl
+- timeoutSeconds
+- enabled
+- authType: NONE | BEARER | API_KEY | BASIC
+- API_KEY config:
+  - apiKeyLocation: HEADER|QUERY
+  - apiKeyName: string
+- BASIC config:
+  - basicUsername: string
 
-## API Token (Connector)
-O Connector pode armazenar um **API Token** (bearer) de forma segura.
+### Secrets (write-only)
+- BEARER: apiToken + apiTokenSpecified (via UI: “Atualizar token” / “Limpar token”)
+- API_KEY: apiKeyValue + apiKeySpecified (via UI: “Atualizar API key” / “Limpar API key”)
+- BASIC: basicPassword + basicPasswordSpecified (via UI: “Atualizar senha” / “Limpar senha”)
 
-### Regras de UI
-- O campo `API Token` é do tipo **password**.
-- O token **nunca** deve ser exibido após salvar.
-- A lista deve exibir um indicador (ex.: chip) quando `hasApiToken=true`.
-- Editar conector:
-  - deixar o campo vazio => **não altera** token (mantém)
-  - informar um novo token => **substitui**
-  - acionar "Limpar token" => **remove** token
+Regras:
+- Segredos nunca são exibidos após salvar.
+- Em edição: se usuário não tocar no campo, a UI não envia `*Specified` (mantém).
+- “Limpar …”: enviar `*Specified=true` e valor `null`.
 
-### Payload (alinhado ao backend)
-- Para alterar/remover token no PUT, a UI deve enviar:
-  - `apiTokenSpecified=true`
-  - `apiToken=<string>` (substitui) **ou** `apiToken=null` (remove)
-- Para manter token: **não enviar** `apiToken` e manter `apiTokenSpecified` ausente/false.
+### requestDefaults
+- method (GET|POST)
+- headers (map)
+- queryParams (map)
+- body (textarea JSON ou texto)
+- contentType (ex.: application/json)
 
+## Delete behavior
+- Ao clicar Delete:
+  - chamar DELETE `/api/v1/connectors/{id}`
+  - 204: remover da lista, toast sucesso
+  - 409: mostrar mensagem “Conector em uso por processos; remova referências antes.”
