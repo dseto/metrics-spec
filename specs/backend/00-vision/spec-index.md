@@ -21,6 +21,9 @@
 - Runner pipeline: `../04-execution/runner-pipeline.md`
 - CLI contract: `../04-execution/cli-contract.md`
 - DSL engine: `../05-transformation/dsl-engine.md`
+- Plan V1 spec (Plan IR): `../05-transformation/plan-v1-spec.md`
+- Plan V1 execution (Preview/Transform): `../07-plan-execution.md`
+- Engine service (rows → validate → CSV): `../03-engine.md`
 - Output validation: `../05-transformation/output-validation.md`
 - CSV format: `../05-transformation/csv-format.md`
 - SQLite schema: `../06-storage/sqlite-schema.md`

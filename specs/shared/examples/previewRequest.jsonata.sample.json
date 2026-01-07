@@ -9,8 +9,8 @@
     ]
   },
   "dsl": {
-    "profile": "plan_v1",
-    "text": "<plan_v1:example>"
+    "profile": "jsonata",
+    "text": "$.result.{timestamp: timestamp, hostName: host, cpuUsagePercent: cpu*100}"
   },
   "outputSchema": {
     "type": "object",
@@ -20,17 +20,5 @@
       }
     },
     "additionalProperties": true
-  },
-  "plan": {
-    "recordPath": "/items",
-    "steps": [
-      {
-        "op": "select",
-        "fields": [
-          "id",
-          "name"
-        ]
-      }
-    ]
   }
 }

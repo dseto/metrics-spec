@@ -77,6 +77,17 @@
           "type": "string"
         }
       }
+    },
+    "plan": {
+      "description": "(Optional) Serialized Plan IR. MUST be populated when the selected engine/profile is 'plan_v1'. MAY be null/absent for legacy engines.",
+      "oneOf": [
+        {
+          "$ref": "./planV1.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "examples": [

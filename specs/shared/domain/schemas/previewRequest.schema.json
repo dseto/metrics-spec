@@ -44,6 +44,17 @@
     "outputSchema": {
       "type": "object",
       "minProperties": 1
+    },
+    "plan": {
+      "description": "(Optional) Serialized Plan IR used when dsl.profile == 'plan_v1'. When provided, backend executes the plan server-side via PlanExecutor before validating/generating CSV.",
+      "oneOf": [
+        {
+          "$ref": "./planV1.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "examples": [

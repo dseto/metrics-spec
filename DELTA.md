@@ -1,32 +1,36 @@
-# DELTA — Confiabilidade da Geração de DSL (Jsonata)
+# DELTA — Plan Engine (IR v1)
 
-## Novos documentos (Spec)
+## Mudanças principais
+1. **Novo parâmetro opcional** `engine` no request do endpoint `/api/v1/ai/dsl/generate`
+   - `legacy` (default inicial): mantém comportamento atual
+   - `plan_v1`: usa PlanEngine (IR v1)
+   - `auto`: tenta `plan_v1` para casos cobertos e faz fallback para `legacy` quando necessário
 
-- `specs/backend/05-transformation/dsl-generation-reliability.md`
-- `specs/backend/05-transformation/openrouter-structured-outputs-and-response-healing.md`
-- `specs/backend/05-transformation/output-schema-inference.md`
-- `specs/backend/05-transformation/retry-and-fallbacks.md`
-- `specs/backend/05-transformation/field-renaming-policy.md`
+2. **Novo PlanEngine (IR v1)**
+   - LLM gera um plano JSON validável por JSON Schema
+   - Backend executa determinístico com:
+     - RecordPathDiscovery (descoberta do array principal)
+     - FieldResolver (aliases pt/en e busca por chaves)
+     - ShapeNormalizer (garante array<object> de saída)
+     - OutputSchemaInferer permissivo
 
-## Novos documentos (Prompts)
+3. **Compatibilidade**
+   - Mesmo endpoint e mesma resposta base.
+   - Campo `dsl.text` continua existindo; em `plan_v1` pode conter DSL compilada (opcional) ou string de debug.
+   - Campo opcional `plan` pode ser retornado **apenas** quando `includePlan=true` (evita quebrar clientes).
 
-- `prompts/backend/github-copilot-implement-dsl-reliability.md`
-- `prompts/backend/github-copilot-refactor-prompt-system.md`
-- `prompts/backend/github-copilot-update-it13-tests.md`
+4. **Testes**
+   - IT13 deve ser parametrizado para rodar com `engine=plan_v1` (alvo) e opcionalmente `engine=legacy` (regressão).
 
-## Documentação de Templates
-
-- `templates/dsl-template-library.md`
-
-## Mudanças esperadas no código (orientação)
-
-Arquivos existentes que deverão ser alterados (nomes conforme relatório):
-- `src/Api/AI/HttpOpenAiCompatibleProvider.cs`  
-  - request OpenRouter: `provider.require_parameters`, `provider.allow_fallbacks=false`
-  - `response_format` com `json_schema.strict=true`
-  - `plugins: [{ id: "response-healing" }]`
-  - reduzir schema retornado pela LLM para `{ dsl: { text } }`
-- `src/Api/Program.cs` (ou o endpoint equivalente)
-  - fluxo: template → LLM → parse → validate/eval → repair → fallback
-- `tests/Integration.Tests/IT13_LLMAssistedDslFlowTests.cs`
-  - alinhar expectativa de renomeação de campos (policy)
+## Arquivos adicionados
+- specs/backend/05-transformation/plan-engine-v1.md
+- specs/backend/05-transformation/engine-routing-and-compat.md
+- specs/backend/05-transformation/record-path-discovery.md
+- specs/backend/05-transformation/field-resolver-and-aliases.md
+- specs/backend/05-transformation/shape-normalization.md
+- specs/backend/05-transformation/output-schema-inference-permissive.md
+- templates/plan-schema-v1.json
+- templates/plan-ops-reference.md
+- prompts/backend/github-copilot-implement-plan-engine-v1.md
+- prompts/backend/github-copilot-wire-engine-routing.md
+- prompts/backend/github-copilot-update-it13-for-plan-engine.md

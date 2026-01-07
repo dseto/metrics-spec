@@ -6,29 +6,21 @@ Base:
 - `specs/02-domain/schemas/*.schema.json`
 
 ## Process
-- GET/POST /api/processes
-- GET/PUT/DELETE /api/processes/{id}
+- GET/POST /api/v1/processes
+- GET/PUT/DELETE /api/v1/processes/{id}
 
 Campos UI: id, name, status, connectorId, outputDestinations.
 
 ## ProcessVersion
-- POST /api/processes/{id}/versions
-- GET/PUT /api/processes/{id}/versions/{version}
+- POST /api/v1/processes/{id}/versions
+- GET/PUT /api/v1/processes/{id}/versions/{version}
 
 Campos: enabled, sourceRequest, dsl, outputSchema, sampleInput.
 
 ## Connector
-- GET/POST /api/connectors
+- GET/POST /api/v1/connectors
 
-Campos: id, name, baseUrl, REMOVIDO_REMOVIDO_authRef, timeoutSeconds.
+Campos: id, name, baseUrl, authRef, timeoutSeconds.
 
 ## Preview
-- POST /api/preview/transform
-
-
-## Delta 1.2.0 — Mapping Connector
-- UI `authType` -> API `authType`
-- UI apiToken/apiTokenSpecified -> API fields (writeOnly)
-- UI apiKeyLocation/apiKeyName/apiKeyValue/apiKeySpecified -> API fields
-- UI basicUsername/basicPassword/basicPasswordSpecified -> API fields
-- UI requestDefaults -> API requestDefaults
+- POST /api/v1/preview/transform

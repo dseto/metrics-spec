@@ -1,44 +1,38 @@
-# Delta Spec Deck — Confiabilidade da Geração de DSL (Jsonata)
+# Delta Spec Deck — Plan Engine (IR v1) paralelo ao Jsonata (legacy)
 
 **Data**: 2026-01-06  
-**Objetivo**: Corrigir o “coração” da solução: geração de DSL Jsonata via LLM, garantindo **resposta sempre parseável**, redução de alucinações e **saída consistente** (incluindo `outputSchema`).
+**Versão**: 1.0  
+**Objetivo**: Adicionar um novo motor de transformação **PlanEngine (IR v1)** como opção incremental ao motor atual (legacy Jsonata/LLM), no **mesmo endpoint** `/api/v1/ai/dsl/generate`, com roteamento por parâmetro `engine` e configuração/feature flag.
 
-Este delta spec deck endereça diretamente os sintomas observados:
-- Resposta da LLM **não-JSON** / `outputSchema` inválido → pipeline quebra antes do retry
-- Alucinação de sintaxe Jsonata (`$group`, `[date]` para ordenar) e retries repetidos
-- Regressão com retry v2.0 (latência alta e 0% de sucesso)
+## Por que este delta existe
+O motor legacy (LLM → Jsonata) é frágil para:
+- dialeto Jsonata (alucinação de sintaxe, shape incorreto)
+- APIs com JSON variado (arrayPath/campos variam)
+- confiabilidade (502 em casos simples)
 
-## O que muda (visão geral)
+O PlanEngine muda o papel da LLM:
+- LLM gera um **plano JSON validável** (IR) — não uma DSL textual
+- Backend executa o plano **deterministicamente** (sem depender da LLM acertar sintaxe)
+- Continua possível compilar/retornar `dsl.text` por compatibilidade
 
-1) **Structured Outputs + Response Healing (OpenRouter)**  
-- Enviar `response_format` com `type="json_schema"` e `strict=true`  
-- Habilitar plugin `response-healing` via `plugins: [{id:"response-healing"}]`  
-- Roteamento: `provider.require_parameters=true` e `allow_fallbacks=false`
+## Escopo do PlanEngine v1
+Operações suportadas (suficientes para cobrir IT13 e 80% dos casos comuns):
+- `select` (projeção + rename)
+- `filter` (condições simples)
+- `compute` (expressões aritméticas simples, ex.: `price * quantity`)
+- `mapValue` (tradução por dicionário, ex.: pending→Pendente)
+- `groupBy` + `aggregate` (sum/count/avg/min/max)
+- `sort` (asc/desc por campo)
+- `limit` (opcional)
 
-2) **LLM não gera mais `outputSchema`**  
-- LLM retorna apenas `dsl.text` (+ opcional `notes`)  
-- Backend executa preview e **infere `outputSchema` determinísticamente** a partir do JSON resultante
+## Não-objetivos (v1)
+- joins entre arrays distintos
+- expressões arbitrárias/execução de código
+- suporte total a todos formatos de data/hora
+- UI/Front-end
 
-3) **Retry inteligente e rápido (sem “loop inútil”)**  
-- Retry sempre aciona, inclusive se a resposta **não parseia**
-- Detecta repetição do mesmo erro → muda estratégia (template fallback / repair específico)
-
-4) **Template fallback para casos comuns**  
-- Extraction/rename, sort, filter, group+sum  
-- Garante alto “success floor” mesmo com modelo fraco
-
-5) **Política de renomeação de campos**  
-- Não traduz/renomeia automaticamente nomes (ex.: `date` → `data`) **a menos que o usuário peça explicitamente**.
-
-## Como aplicar
-
-1. Copie os arquivos desta pasta para dentro do repositório (mantendo a estrutura).
-2. Siga `specs/backend/05-transformation/dsl-generation-reliability.md` para implementar no backend.
-3. Rode `IT13_LLMAssistedDslFlowTests` e verifique KPIs em `RELEASE_NOTES.md`.
-
-## Entregáveis
-
-- Especificações detalhadas (backend)
-- Biblioteca de templates (documentação + catálogo)
-- Prompts para GitHub Copilot implementar e ajustar testes
-
+## Conteúdo
+- `specs/backend/05-transformation/` — especificações implementáveis
+- `templates/plan-schema-v1.json` — JSON Schema do plano (IR)
+- `prompts/backend/` — prompts de implementação para GitHub Copilot
+- `DELTA.md` e `RELEASE_NOTES.md` — resumo de mudanças e release notes

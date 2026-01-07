@@ -26,17 +26,5 @@
     "additionalProperties": true
   },
   "rationale": "Mapeia campos e converte cpu (0-1) para percent (0-100).",
-  "warnings": [],
-  "plan": {
-    "recordPath": "/items",
-    "steps": [
-      {
-        "op": "select",
-        "fields": [
-          "id",
-          "name"
-        ]
-      }
-    ]
-  }
+  "warnings": []
 }

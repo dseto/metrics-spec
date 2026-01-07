@@ -86,6 +86,14 @@
         "null"
       ],
       "description": "Existing output schema for refinement (optional)."
+    },
+    "engine": {
+      "description": "(Optional) Overrides server-side AI engine selection. Use 'plan_v1' for deterministic plan generation with template fallback; 'legacy' for jsonata DSL generation.",
+      "type": "string",
+      "enum": [
+        "plan_v1",
+        "legacy"
+      ]
     }
   },
   "examples": [
