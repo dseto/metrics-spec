@@ -40,3 +40,17 @@
 
 ## AI Assist (design-time)
 - `../08-ai-assist/README.md`
+- `../08-ai-assist/ai-provider-contract.md`
+- `../08-ai-assist/ai-endpoints.md`
+- `../08-ai-assist/ai-tests.md`
+- `../08-ai-assist/01-openrouter-setup.md`
+- `../08-ai-assist/02-llm-provider-abstraction.md`
+
+## Execution (infra)
+- `../04-execution/02-dependency-injection.md`
+- `../04-execution/03-environment-configuration.md`
+
+## Testing (IT suites)
+- `../09-testing/01-it04-ai-dsl-generate-tests.md`
+- `../09-testing/02-it13-llm-integration-tests.md`
+

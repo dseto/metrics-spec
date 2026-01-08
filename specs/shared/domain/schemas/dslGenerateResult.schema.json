@@ -22,11 +22,11 @@
         "profile": {
           "type": "string",
           "enum": [
-            "jsonata",
-            "jmespath",
+            "ir",
             "custom"
           ],
-          "default": "jsonata"
+          "default": "ir",
+          "description": "Profile retornado. 'ir' é o formato atual (PlanV1 IR)."
         },
         "text": {
           "type": "string",

@@ -1,60 +1,71 @@
-# MIGRATION_JSONATA_TO_PLANV1
+# MIGRATION_JSONATA_TO_IR (PlanV1)
 
 Data: 2026-01-07
 
-## Objetivo
+Este guia explica como migrar do formato **legacy JSONata** para o formato atual **IR (PlanV1)**.
 
-Guiar a migração do ecossistema (backend + clients) do perfil legacy `jsonata`
-para o perfil recomendado `plan_v1`.
-
----
-
-## Breaking changes (principais)
-
-1) Preview/Transform agora pode exigir `plan`
-- Quando `dsl.profile == "plan_v1"`, o request do preview deve enviar `plan`.
-
-2) Resultado de generate agora inclui `plan`
-- Para `plan_v1`, `dslGenerateResult.plan` deve estar preenchido.
-
-3) OpenAPI / rotas versionadas
-- Endpoints esperados:
-  - `POST /api/v1/ai/dsl/generate`
-  - `POST /api/v1/preview/transform`
+> Observação: o nome deste arquivo foi mantido por compatibilidade com versões anteriores do spec deck,
+> mas o destino final é **IR** (`dslProfile="ir"`).
 
 ---
 
-## Estratégia recomendada
+## Contexto
 
-### Fase 0 — Preparação
-- Atualizar contratos (schemas + openapi)
-- Documentar Plan IR e fluxo de execução (spec deck)
+Antes:
+- `dsl.profile = "jsonata"`
+- `dsl.text` continha uma expressão JSONata
+- preview/transform executavam a DSL diretamente
 
-### Fase 1 — Dual support
-- Backend mantém `legacy` (quando necessário) e `plan_v1`
-- Client passa a suportar `plan_v1` primeiro
-
-### Fase 2 — Default plan_v1
-- Config `AI:DefaultEngine = "plan_v1"`
-- Suites de teste focam em `plan_v1`
-- Legacy tests podem ser mantidos como `Skip`
-
-### Fase 3 — Deprecar legacy
-- Remover dependências de `jsonata` (quando não houver consumidores)
-- Limpar fixtures e documentação legacy (opcional)
+Agora:
+- `dsl.profile = "ir"`
+- `plan` é o formato executável (PlanV1)
+- preview/transform executam o plano determinístico via `PlanExecutor`
+- JSONata foi removido do backend em **2026-01-07**
 
 ---
 
-## Checklist para client (frontend/CLI)
+## O que muda no client (UI / API consumer)
 
-- [ ] Enviar `engine:"plan_v1"` (ou `dslProfile:"plan_v1"`, dependendo do contrato)
-- [ ] Capturar `plan` no response de generate
-- [ ] Enviar `plan` no request de preview/transform
-- [ ] Tratar erros 400 (plan inválido / execução falha) e 200 inválido (schema output)
+### 1) Generate (design-time)
+ANTES:
+- request: `dslProfile="jsonata"` ou `engine="legacy"`
+
+DEPOIS:
+- request: `dslProfile="ir"` e (opcional) `engine="plan_v1"`
+- response: inclui `plan` (obrigatório)
+
+### 2) Preview/Transform
+ANTES:
+- enviar `dsl` (jsonata) + `outputSchema`
+- backend executava jsonata
+
+DEPOIS:
+- enviar `plan` + `outputSchema` + `sampleInput`
+- `dsl` pode existir para display/auditoria, mas não é executado
+
+Schema: `specs/shared/domain/schemas/previewRequest.schema.json`
 
 ---
 
-## Referências
-- `specs/backend/07-plan-execution.md`
-- `specs/backend/05-transformation/plan-v1-spec.md`
-- `specs/shared/openapi/config-api.yaml`
+## Migração de dados persistidos (ProcessVersion)
+
+Se existirem versões antigas com `dsl.profile="jsonata"`:
+
+### Estratégia recomendada
+1. Marcar versões antigas como **legacy** (read-only)
+2. Criar nova versão convertida para IR:
+   - gerar `plan` usando templates (T1/T2/T5) quando possível
+   - ou re-gerar via AI (`/api/v1/ai/dsl/generate`) com `dslProfile="ir"`
+
+### Por que não converter automaticamente 1:1?
+JSONata é expressivo demais e pode não ter mapeamento determinístico direto para PlanV1.
+
+---
+
+## Checklist
+
+- [ ] Atualizar enums/schemas para `dslProfile="ir"` (specs/shared)
+- [ ] Atualizar UI/clients para enviar/consumir `plan`
+- [ ] Atualizar testes (IT13 determinístico, IT04 LLM real)
+- [ ] Confirmar que requests com `jsonata` são rejeitados (400)
+

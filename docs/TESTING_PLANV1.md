@@ -1,60 +1,44 @@
-# TESTING_PLANV1
+# TESTING_PLANV1 (IR)
 
 Data: 2026-01-07
 
 ## Objetivo
 
-Documentar o **padrão de testes de integração (E2E)** para fluxos `plan_v1`,
+Documentar o padrão de testes de integração (E2E) para fluxos **PlanV1/IR** (`dslProfile="ir"`),
 evitando dependência de conhecimento tácito (“tribal knowledge”).
 
 ---
 
 ## Padrão de teste (integration)
 
-1) **Gerar DSL/Plan**
-- Chamar `POST /api/v1/ai/dsl/generate` com engine `plan_v1`
+### 1) Gerar DSL/Plan (design-time)
+- Chamar `POST /api/v1/ai/dsl/generate` com:
+  - `dslProfile="ir"`
+  - `engine="plan_v1"` (se informado)
 - Validar:
-  - `result.dsl.profile == "plan_v1"`
-  - `result.plan != null`
+  - `dsl.profile == "ir"`
+  - `plan != null` e `plan.steps` não vazio
 
-2) **Executar preview**
+> Nota: o endpoint é auth-required. Em dev/test, usar `/api/auth/token`.
+
+### 2) Executar preview determinístico
 - Chamar `POST /api/v1/preview/transform` enviando:
   - `sampleInput`
-  - `dsl` (do generate)
-  - `outputSchema` (do generate)
-  - `plan` (do generate)
-
-3) **Assert**
-- `isValid == true`
-- (opcional) validar CSV gerado e/ou rows retornadas
-
----
-
-## Helper recomendado
-
-Um helper `ExecuteTransformAsync(sampleInput, dslResult)` deve:
-- montar o request incluindo `plan`
-- retornar `PreviewTransformResponseDto`
+  - `outputSchema`
+  - `plan`
+- Validar:
+  - `isValid == true`
+  - `csvPreview` não vazio (quando aplicável)
+  - `rowsArray` compatível com schema
 
 ---
 
-## Cobertura mínima recomendada
+## Classes de testes
 
-### Templates (determinísticos)
-- T1: Select all fields
-- T2: Select fields (+ filter)
-- T5: GroupBy + Aggregate
-
-### Inputs variados
-- Root array: `[{...}]`
-- Wrapper: `{ "items": [...] }`
-- Wrapper: `{ "results": [...] }`
-- Nested wrapper: `{ "results": { "forecast": [...] } }`
-
-### Casos de erro
-- Plan inválido (schema) → 400
-- Execução falha (field inexistente) → 400
-- Schema de output não bate com rows → 200 com `isValid=false`
+- **PlanV1/IR determinístico**: sempre roda (sem dependências externas)
+  - ver: `specs/backend/09-testing/02-it13-llm-integration-tests.md`
+- **LLM real**: roda somente quando há key/config
+  - ver: `specs/backend/09-testing/01-it04-ai-dsl-generate-tests.md`
 
 ---
 
@@ -63,8 +47,9 @@ Um helper `ExecuteTransformAsync(sampleInput, dslResult)` deve:
 Em ambientes com LLM real, é esperado que:
 - algumas respostas não sejam JSON válido,
 - alguns planos sejam inválidos,
-- fallback por templates seja acionado com frequência.
+- fallback por templates seja acionado.
 
 Logo, recomenda-se:
 - manter testes determinísticos por template (estáveis),
-- isolar testes “real LLM” e permitir `Skip` quando necessário.
+- isolar testes “real LLM” e permitir `Skip`/filtro quando necessário.
+

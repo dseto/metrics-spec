@@ -5,54 +5,20 @@ Data: 2026-01-07
 ## Contexto
 
 O backend possui um engine responsável por:
-- executar transformações (dependendo do profile),
+- executar transformações determinísticas a partir de `plan` (IR),
 - validar saída contra JSON Schema,
 - gerar CSV com base nas rows finais.
 
 Historicamente, o engine executava transformações a partir de DSL (ex.: `jsonata`).
-Com `plan_v1`, parte da execução passa a ocorrer no `PlanExecutor`, e o engine precisa
-suportar o cenário “rows já executadas”.
+Após a migração, a execução principal ocorre via `PlanExecutor` e o engine opera no modo “rows-based”.
 
 ---
 
-## TransformValidateToCsvFromRows
+## Modo suportado: Rows-based (IR)
 
-### Assinatura (C#)
-```csharp
-public EngineTransformResult TransformValidateToCsvFromRows(
-    JsonElement rowsArray,
-    JsonElement outputSchema)
-```
-
-### Propósito
-- Validar `rowsArray` (array de objetos) contra `outputSchema`
-- Gerar CSV a partir das `rows` já prontas
-- Retornar um `EngineTransformResult` com:
-  - `IsValid` + lista de erros (quando inválido)
-  - `Csv` (quando válido)
-  - (opcional) `Rows` normalizadas, dependendo da implementação
-
-### Entradas
-- `rowsArray`: JSON array de objetos (output do PlanExecutor)
-- `outputSchema`: JSON Schema de validação do output
-
-### Saídas
-- `EngineTransformResult` com validação e CSV.
-
-### Onde é usado
-- `POST /api/v1/preview/transform` quando `dsl.profile == "plan_v1"` e `plan != null`
-  - Handler: `src/Api/Program.cs`
-  - Execução do plano: `PlanExecutor`
-  - Validação/CSV: `TransformValidateToCsvFromRows`
-
----
-
-## Diferença para “transform a partir de DSL”
-
-| Modo | Execução | Quando usar |
-|---|---|---|
-| DSL-based (legacy) | Engine executa DSL (ex.: jsonata) | perfis legacy |
-| Rows-based (`plan_v1`) | PlanExecutor executa steps → engine valida/gera CSV | `plan_v1` |
+1) `PlanExecutor` executa `plan` e gera `rowsArray`
+2) `EngineService` valida e gera CSV:
+   - `TransformValidateToCsvFromRows(rowsArray, outputSchema)`
 
 ---
 
@@ -61,4 +27,14 @@ public EngineTransformResult TransformValidateToCsvFromRows(
 - Se `rowsArray` não for array → erro de request (400)
 - Se `rowsArray` for array mas violar `outputSchema` → retorno `200 OK` com `isValid=false` no preview
 
-Detalhes do contrato de preview: `specs/shared/domain/schemas/previewResult.schema.json`
+---
+
+## Testes obrigatórios
+
+- IT13 cobre execução determinística end-to-end
+- IT04 cobre geração de plano (AI endpoint) e validações
+
+Docs:
+- `specs/backend/09-testing/01-it04-ai-dsl-generate-tests.md`
+- `specs/backend/09-testing/02-it13-llm-integration-tests.md`
+

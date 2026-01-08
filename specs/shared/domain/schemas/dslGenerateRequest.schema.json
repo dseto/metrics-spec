@@ -27,10 +27,10 @@
     "dslProfile": {
       "type": "string",
       "enum": [
-        "jsonata",
-        "jmespath"
+        "ir"
       ],
-      "default": "jsonata"
+      "default": "ir",
+      "description": "Profile de DSL suportado. Atualmente apenas 'ir' (Intermediate Representation / PlanV1) é aceito."
     },
     "constraints": {
       "type": "object",
@@ -88,17 +88,17 @@
       "description": "Existing output schema for refinement (optional)."
     },
     "engine": {
-      "description": "(Optional) Overrides server-side AI engine selection. Use 'plan_v1' for deterministic plan generation with template fallback; 'legacy' for jsonata DSL generation.",
+      "description": "(Optional) Overrides server-side AI engine selection. Atualmente apenas 'plan_v1' (PlanV1 IR) é suportado.",
       "type": "string",
       "enum": [
-        "plan_v1",
-        "legacy"
-      ]
+        "plan_v1"
+      ],
+      "default": "plan_v1"
     }
   },
   "examples": [
     {
-      "goalText": "Quero um CSV com timestamp, hostName e cpuUsagePercent (0-100).",
+      "goalText": "Extrair timestamp e host e cpu em % do primeiro item",
       "sampleInput": {
         "result": [
           {
@@ -108,16 +108,11 @@
           }
         ]
       },
-      "dslProfile": "jsonata",
+      "dslProfile": "ir",
       "constraints": {
-        "maxColumns": 30,
-        "allowTransforms": true,
-        "forbidNetworkCalls": true,
-        "forbidCodeExecution": true
+        "maxFields": 10
       },
-      "hints": {
-        "columns": "timestamp,hostName,cpuUsagePercent"
-      }
+      "engine": "plan_v1"
     }
   ]
 }

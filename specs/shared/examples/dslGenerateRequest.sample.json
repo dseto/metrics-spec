@@ -1,5 +1,5 @@
 {
-  "goalText": "Quero um CSV com timestamp, hostName e cpuUsagePercent (0-100).",
+  "goalText": "Extrair timestamp e host e cpu em % do primeiro item",
   "sampleInput": {
     "result": [
       {
@@ -9,14 +9,9 @@
       }
     ]
   },
-  "dslProfile": "jsonata",
+  "dslProfile": "ir",
+  "engine": "plan_v1",
   "constraints": {
-    "maxColumns": 30,
-    "allowTransforms": true,
-    "forbidNetworkCalls": true,
-    "forbidCodeExecution": true
-  },
-  "hints": {
-    "columns": "timestamp,hostName,cpuUsagePercent"
+    "maxFields": 10
   }
 }

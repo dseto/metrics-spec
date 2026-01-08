@@ -2,45 +2,102 @@
 
 Data: 2026-01-07
 
-## Unit tests
-Cobrir:
-- Provider retorna payload válido e inválido
-- Parser/validator rejeita:
-  - JSON inválido (não parseia)
-  - Plan inválido (schema `planV1.schema.json`)
-  - outputSchema inválido
-- Fallback por templates:
-  - quando LLM falha → template T1/T2/T5 é selecionado
-  - `planSource` é registrado corretamente (ex.: `template:T2`)
+Este documento padroniza como testar a geração de DSL/Plan (design-time),
+incluindo testes determinísticos e testes com **LLM real (OpenRouter)**.
 
-## Integration tests (API)
-Fluxos mínimos:
+---
 
-### 1) Generate (plan_v1)
-- `POST /api/v1/ai/dsl/generate`
-  - 200 quando habilitado + provider ok
-  - assert: `dsl.profile == "plan_v1"`
-  - assert: `plan != null` (sempre populado)
+## Objetivos
 
-### 2) Preview/Transform (plan_v1)
-- `POST /api/v1/preview/transform`
-  - request inclui `plan`
-  - assert: `isValid == true` para casos determinísticos (templates)
+- Garantir que `POST /api/v1/ai/dsl/generate`:
+  - valida input corretamente,
+  - retorna `dslProfile="ir"` + `plan` válido,
+  - aplica fallback por templates quando necessário,
+  - se integra ao fluxo de auth/audit.
 
-### 3) Erros
-- 503 `AI_DISABLED` quando desabilitado
-- 503 `AI_OUTPUT_INVALID` quando provider retorna output ruim e não há template aplicável
-- 400 quando `plan` inválido (schema / parse)
-- 400 quando execução falha (ex.: groupBy em field inexistente)
-- 200 com `isValid=false` quando rows violam `outputSchema`
+---
 
-## Golden vectors
-- Reutilizar:
-  - `specs/shared/examples/dslGenerateResult.plan_v1.sample.json`
-  - `specs/shared/examples/previewRequest.plan_v1.sample.json`
-- Manter samples legacy quando necessário:
-  - `*.legacy.sample.json`
-  - `previewRequest.jsonata.sample.json`
+## Test suites relevantes
 
-## Documentação de suporte
-- Padrão de testes: `docs/TESTING_PLANV1.md`
+### IT04 — AI DSL Generate (Integration)
+Documento detalhado: `specs/backend/09-testing/01-it04-ai-dsl-generate-tests.md`
+
+Cobertura (esperada):
+- 2 testes LLM real (categoria **LLM**) retornando plano válido
+- 2 testes de validação (categoria **Validation**) retornando 400
+
+### IT13 — PlanV1/IR end-to-end flow (Integration)
+Documento detalhado: `specs/backend/09-testing/02-it13-llm-integration-tests.md`
+
+Cobertura (esperada):
+- testes determinísticos do PlanExecutor (sem LLM)
+- cobre: recordPath discovery, select/filter/groupBy/mapValue/limit
+
+---
+
+## Variáveis de ambiente
+
+### Obrigatória para testes LLM real
+- `METRICS_OPENROUTER_API_KEY`  
+  Exemplo: `sk-or-v1-*`
+
+Sem esta variável:
+- recomenda-se rodar a suite offline (sem filtro `Category=LLM`)
+- ou rodar com filtro explícito para excluir `LLM`
+
+### Auth de testes (dev/test)
+- `Auth:LocalJwt:EnableBootstrapAdmin=true` (ou equivalente via env)
+- credenciais bootstrap típicas (dev/test): `admin / testpass123`
+
+> Em produção, bootstrap admin deve estar desabilitado e secrets devem vir de secret store.
+
+---
+
+## .env file loading (tests)
+
+Os testes carregam `.env` automaticamente via `TestWebApplicationFactory.LoadEnvFile()`.
+
+Ordem de busca (do contexto de `bin/Debug/netX.Y`):
+1. `../../../../../.env`
+2. `./.env`
+3. `../../../.env`
+4. fallback absoluto (somente em alguns ambientes de dev)
+
+Recomendação: mantenha `.env` **na raiz do repo**.
+
+---
+
+## Como rodar
+
+### Tudo (inclui LLM se chave existir)
+```bash
+dotnet test Metrics.Simple.SpecDriven.sln
+```
+
+### Apenas testes LLM (requer `METRICS_OPENROUTER_API_KEY`)
+```bash
+dotnet test Metrics.Simple.SpecDriven.sln --filter "Category=LLM"
+```
+
+### Apenas validação (sem LLM)
+```bash
+dotnet test Metrics.Simple.SpecDriven.sln --filter "Category=Validation"
+```
+
+### Apenas PlanV1/IR (sem LLM)
+```bash
+dotnet test Metrics.Simple.SpecDriven.sln --filter "Category=PlanV1"
+```
+
+---
+
+## Boas práticas para testes LLM
+
+- Sempre marcar testes LLM com: `[Trait("Category","LLM")]`
+- Não depender de resposta exata do LLM; validar invariantes:
+  - status 200
+  - `dsl.profile == "ir"`
+  - `plan.steps` não vazio
+  - `plan` valida contra schema
+- Logar (e/ou assertar) que o plano veio de LLM vs template quando relevante.
+

@@ -28,11 +28,11 @@
         "profile": {
           "type": "string",
           "enum": [
-            "jsonata",
-            "jmespath",
+            "ir",
             "custom"
           ],
-          "default": "jsonata"
+          "default": "ir",
+          "description": "Profile do DSL. Para execução determinística use 'ir' + campo 'plan'."
         },
         "text": {
           "type": "string",

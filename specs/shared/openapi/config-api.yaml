@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: MetricsSimple Config API
-  version: 1.1.0
+  version: 1.2.0
   description: 'API de configuração para Connectors, Processes e Versions + endpoint
     de Preview/Transform.
 

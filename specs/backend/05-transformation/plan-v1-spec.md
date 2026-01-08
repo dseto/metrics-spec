@@ -1,112 +1,54 @@
-# Plan V1 Spec (Plan IR)
+# Plan V1 Spec (IR)
 
 Data: 2026-01-07
 
 ## Visão geral
 
-`plan_v1` é um perfil de transformação baseado em um **Plano determinístico (Plan IR)**,
+`ir` é o profile atual de transformação baseado em um **Plano determinístico (PlanV1 IR)**,
 executado server-side pelo `PlanExecutor`.
 
-Ele substitui (no caminho principal) o perfil legacy `jsonata` e permite:
+Ele substitui o perfil legacy `jsonata` e permite:
 - preview determinístico,
-- testes de integração end-to-end,
-- fallback por templates quando o LLM falha.
+- testes de integração end-to-end estáveis,
+- fallback por templates quando o LLM falha,
+- reduzir “tribal knowledge” (plano é o contrato executável).
 
 Schema canônico: `specs/shared/domain/schemas/planV1.schema.json`
 
 ---
 
-## Estrutura do Plan IR
+## Onde o `plan` aparece
 
-### Campos de topo
-- `recordPath` (string|null): caminho do array de registros a processar
-  - exemplos: `/` (root array), `/items`, `/results`, `/results/forecast`
-- `steps` (array): pipeline de operações
+- Response de `POST /api/v1/ai/dsl/generate` (design-time): `DslGenerateResult.plan`
+- Requests de preview/transform (runtime determinístico): `PreviewTransformRequest.plan`
 
-### Exemplo mínimo (Select fields)
+O campo `dsl.text` pode carregar uma representação string do plano, mas **não é o executável**.
+
+---
+
+## Estrutura do plano (alto nível)
+
 ```json
 {
   "recordPath": "/items",
   "steps": [
-    { "op": "select", "fields": ["id", "name"] }
+    { "op": "select", "fields": ["a","b"] },
+    { "op": "filter", "where": { "...": "..." } },
+    { "op": "groupBy", "keys": ["host"], "aggregates": [{"op":"avg","field":"cpu"}] },
+    { "op": "limit", "take": 100 }
   ]
 }
 ```
 
----
-
-## Operações suportadas (mínimo)
-
-> Observação: este documento foca no conjunto **validado por testes de integração**.
-> O schema é permissivo para evolução.
-
-### 1) select
-Objetivo: projeção de colunas/campos.
-
-Exemplo:
-```json
-{ "op": "select", "fields": ["id", "nome", "idade"] }
-```
-
-Template relacionado:
-- T1 (select all)
-- T2 (select fields)
-
-### 2) filter
-Objetivo: filtrar registros (ex.: `active == true`).
-
-Exemplo (forma típica, engine-defined):
-```json
-{ "op": "filter", "where": { "field": "active", "eq": true } }
-```
-
-Template relacionado:
-- T2 (com filtro)
-
-### 3) groupBy
-Objetivo: agrupar e agregar.
-
-Exemplo (avg por categoria):
-```json
-{
-  "op": "groupBy",
-  "keys": ["category"],
-  "aggregates": [
-    { "field": "value", "func": "avg", "as": "avgValue" }
-  ]
-}
-```
-
-Template relacionado:
-- T5 (GroupBy + Aggregate)
-
-### 4) mapValue
-Objetivo: mapear valores (ex.: `A → Active`, `B → Blocked`).
-
-Exemplo:
-```json
-{
-  "op": "mapValue",
-  "field": "status",
-  "mapping": { "A": "Active", "B": "Blocked" },
-  "default": "Unknown"
-}
-```
-
-### 5) limit
-Objetivo: limitar resultados (top N).
-
-Exemplo:
-```json
-{ "op": "limit", "take": 2 }
-```
+- `recordPath` identifica o array de registros a ser processado.
+- `steps` é uma lista ordenada (pipeline).
 
 ---
 
 ## RecordPath Discovery (heurística)
 
 O RecordPath Discovery é usado para lidar com diferentes formatos de input, por exemplo:
-- root array: `[{...}, {...}]`
+- root array: `[Ellipsis, Ellipsis]`
 - wrapper: `{ "items": [...] }`, `{ "results": [...] }`, `{ "data": [...] }`
 - nested wrapper: `{ "results": { "forecast": [...] } }`
 
@@ -117,32 +59,56 @@ Algoritmo (alto nível):
 4. Tentar `/data`
 5. Deep scan (primeiro array com `length > 0`)
 
-Heurísticas:
-- Preferir paths com mais registros
-- Evitar arrays aninhados dentro de records (quando possível)
-
-Código: `src/Api/AI/Engines/PlanV1/RecordPathDiscovery.cs`
+Regras adicionais:
+- se nenhum array for encontrado, retornar 400 (input inválido para transformação tabular)
+- `recordPath` final deve apontar para um array
 
 ---
 
-## Templates (fallback determinístico)
+## Steps suportados (mínimo)
 
-Quando o LLM falha (JSON inválido / schema inválido), o engine seleciona template:
+> O schema é permissivo para evoluir; a execução define a semântica.
 
-- **T1**: selecionar todos os campos
-- **T2**: selecionar campos (e filtro opcional)
-- **T5**: group by + aggregate
+### `select`
+- seleciona campos do registro atual
+- pode operar como “select all” se `fields` omitido (dependendo do template)
 
-O template escolhido deve ser registrado em observabilidade (`planSource="template:Tx"`).
+### `filter`
+- filtra registros por predicado (`where`)
+
+### `groupBy` + agregações
+- agrupa por chaves
+- agrega campos (avg, sum, count, min, max)
+
+### `mapValue`
+- projeta/renomeia campo
+- pode aplicar transform simples (ex.: multiplicação)
+
+### `limit`
+- aplica `take` (top N)
 
 ---
 
-## Edge cases (recomendado documentar/testar)
+## Templates (fallback)
 
-- Arrays vazios em `recordPath`
-- Campos ausentes / `null`
-- Tipos divergentes (ex.: string vs number em aggregate)
-- Predicados de filter com valores não-booleanos
-- mapValue com chaves não-string (coerção)
+Templates são essenciais para manter determinismo quando o LLM falha:
 
-> Esses casos devem ser adicionados a `docs/TESTING_PLANV1.md` conforme o suite evoluir.
+- **T1**: Select all fields
+- **T2**: Select specific fields (+ filtro opcional)
+- **T5**: GroupBy + Aggregate
+
+O template escolhido deve ser registrado em observabilidade (ex.: `planSource=template:T2`).
+
+---
+
+## Validação do plano
+
+Antes de executar:
+- `plan` deve validar contra `planV1.schema.json`
+- `steps` não pode ser vazio
+- `recordPath` deve resolver para array
+
+Se falhar:
+- retorno 400 (plano inválido) — quando fornecido pelo client
+- ou fallback template — quando gerado por AI e inválido
+

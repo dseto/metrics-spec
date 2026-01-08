@@ -9,26 +9,55 @@
     ]
   },
   "dsl": {
-    "profile": "plan_v1",
-    "text": "<plan_v1:example>"
+    "profile": "ir",
+    "text": "{\"recordPath\":\"/result\",\"steps\":[{\"op\":\"mapValue\",\"target\":\"timestamp\",\"source\":\"timestamp\"},{\"op\":\"mapValue\",\"target\":\"hostName\",\"source\":\"host\"},{\"op\":\"mapValue\",\"target\":\"cpuUsagePercent\",\"source\":\"cpu\",\"transform\":\"multiply\",\"factor\":100},{\"op\":\"select\",\"fields\":[\"timestamp\",\"hostName\",\"cpuUsagePercent\"]}]}"
   },
   "outputSchema": {
     "type": "object",
     "properties": {
       "timestamp": {
         "type": "string"
+      },
+      "hostName": {
+        "type": "string"
+      },
+      "cpuUsagePercent": {
+        "type": "number"
       }
     },
-    "additionalProperties": true
+    "required": [
+      "timestamp",
+      "hostName",
+      "cpuUsagePercent"
+    ],
+    "additionalProperties": false
   },
   "plan": {
-    "recordPath": "/items",
+    "recordPath": "/result",
     "steps": [
+      {
+        "op": "mapValue",
+        "target": "timestamp",
+        "source": "timestamp"
+      },
+      {
+        "op": "mapValue",
+        "target": "hostName",
+        "source": "host"
+      },
+      {
+        "op": "mapValue",
+        "target": "cpuUsagePercent",
+        "source": "cpu",
+        "transform": "multiply",
+        "factor": 100
+      },
       {
         "op": "select",
         "fields": [
-          "id",
-          "name"
+          "timestamp",
+          "hostName",
+          "cpuUsagePercent"
         ]
       }
     ]

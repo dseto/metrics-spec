@@ -1,7 +1,7 @@
 {
   "dsl": {
-    "profile": "jsonata",
-    "text": "$.result.{timestamp: timestamp, hostName: host, cpuUsagePercent: cpu*100}"
+    "profile": "ir",
+    "text": "{\"recordPath\":\"/result\",\"steps\":[{\"op\":\"mapValue\",\"target\":\"timestamp\",\"source\":\"timestamp\"},{\"op\":\"mapValue\",\"target\":\"hostName\",\"source\":\"host\"},{\"op\":\"mapValue\",\"target\":\"cpuUsagePercent\",\"source\":\"cpu\",\"transform\":\"multiply\",\"factor\":100},{\"op\":\"select\",\"fields\":[\"timestamp\",\"hostName\",\"cpuUsagePercent\"]}]}"
   },
   "outputSchema": {
     "type": "object",
@@ -13,9 +13,7 @@
         "type": "string"
       },
       "cpuUsagePercent": {
-        "type": "number",
-        "minimum": 0,
-        "maximum": 100
+        "type": "number"
       }
     },
     "required": [
@@ -23,18 +21,47 @@
       "hostName",
       "cpuUsagePercent"
     ],
-    "additionalProperties": true
+    "additionalProperties": false
   },
-  "rationale": "Mapeia campos e converte cpu (0-1) para percent (0-100).",
+  "exampleRows": [
+    {
+      "timestamp": "2026-01-01T00:00:00Z",
+      "hostName": "srv01",
+      "cpuUsagePercent": 73.0
+    }
+  ],
+  "rationale": "Mapeia campos e converte cpu (0-1) para percent (0-100) usando o profile 'ir' (PlanV1).",
   "warnings": [],
+  "modelInfo": {
+    "provider": "openrouter",
+    "model": "deepseek/deepseek-chat-v3.1"
+  },
   "plan": {
-    "recordPath": "/items",
+    "recordPath": "/result",
     "steps": [
+      {
+        "op": "mapValue",
+        "target": "timestamp",
+        "source": "timestamp"
+      },
+      {
+        "op": "mapValue",
+        "target": "hostName",
+        "source": "host"
+      },
+      {
+        "op": "mapValue",
+        "target": "cpuUsagePercent",
+        "source": "cpu",
+        "transform": "multiply",
+        "factor": 100
+      },
       {
         "op": "select",
         "fields": [
-          "id",
-          "name"
+          "timestamp",
+          "hostName",
+          "cpuUsagePercent"
         ]
       }
     ]

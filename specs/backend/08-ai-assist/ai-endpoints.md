@@ -2,88 +2,101 @@
 
 Data: 2026-01-07
 
-> Este documento descreve o comportamento **implementado** após a migração do backend para o perfil **`plan_v1`**
-> (Plan IR determinístico + execução server-side em Preview/Transform).
+Este documento descreve o comportamento **implementado** após a migração do backend para:
+- engine **`plan_v1`**
+- profile **`ir`** (PlanV1 IR / Intermediate Representation)
 
-## Endpoints (versionados)
+> **Importante:** todos os endpoints de AI são **auth-required** (Bearer JWT).
 
-### 1) Gerar DSL/Plan
+---
+
+## 1) Gerar DSL/Plan (Design-time)
+
 `POST /api/v1/ai/dsl/generate`
 
-#### Schemas
+### Schemas
 - Request: `specs/shared/domain/schemas/dslGenerateRequest.schema.json`
 - Response: `specs/shared/domain/schemas/dslGenerateResult.schema.json`
-- Error (503): `specs/shared/domain/schemas/aiError.schema.json`
+- Plan: `specs/shared/domain/schemas/planV1.schema.json`
 
-#### Comportamento (implementado)
-1. Verificar se AI está habilitada (`AI.Enabled` em `appsettings.json`).
-2. Validar request (tamanho e estrutura).
-3. Selecionar engine:
-   - Se request informar `engine`, usar o valor.
-   - Caso contrário, usar `AI:DefaultEngine` (ver seção **Configuração**).
-4. Gerar saída:
-   - Para `plan_v1`: gerar **Plan IR** (JSON) + `DslDto { profile: "plan_v1" }`.
-   - Para `legacy`: gerar DSL `jsonata` (quando suportado) + `DslDto { profile: "jsonata" }`.
-5. Validar:
-   - Se `plan_v1`: validar o Plan IR contra `specs/shared/domain/schemas/planV1.schema.json`
-     (e regras adicionais do modelo `Plan` no código).
-   - Se inválido / não parseável: acionar fallback por templates (T1/T2/T5).
-6. (Opcional/recomendado) Executar preview interno para sanity-check:
-   - input: `sampleInput`
-   - dsl/profile/plan: gerados
-   - schema: `outputSchema` gerado
-7. Retornar:
-   - `dslGenerateResult.plan` **deve** estar preenchido quando o engine/profile for `plan_v1`.
+### Authentication requirements
 
-#### Observabilidade
-Logar (Serilog) com:
-- `correlationId` (header `X-Correlation-Id` quando presente)
-- provider/model/promptVersion
-- tamanho de input/output, latência, status (success/fail)
-- `planSource`: `"llm" | "template:T1" | "template:T2" | "template:T5" | "explicit"`
+Todos os endpoints de AI exigem **Authorization: Bearer <jwt>**.
 
-> Importante: nunca logar segredos. `sampleInput` pode conter dados sensíveis: logar apenas tamanho/hash.
+Fluxo esperado (dev/test):
+1. Login → `POST /api/auth/token` com credenciais (ex.: bootstrap admin)
+2. Extrair `access_token`
+3. Usar o token em todas as chamadas subsequentes
 
----
+Exemplo HTTP:
 
-### 2) Preview Transform
-`POST /api/v1/preview/transform`
+```http
+POST /api/v1/ai/dsl/generate HTTP/1.1
+Authorization: Bearer eyJhbGciOi...
+Content-Type: application/json
 
-#### Schemas
-- Request: `specs/shared/domain/schemas/previewRequest.schema.json`
-- Response: `specs/shared/domain/schemas/previewResult.schema.json`
-
-#### Comportamento (resumo)
-- Para `dsl.profile == "plan_v1"` e `plan != null`:
-  - Executar o Plan server-side (PlanExecutor) e gerar `rows`
-  - Validar `rows` contra `outputSchema` e gerar CSV (EngineService)
-- Para outros perfis:
-  - Executar caminho legacy (ex.: jsonata) — quando disponível
-
-Para detalhes completos, ver: `specs/backend/07-plan-execution.md`.
-
----
-
-## Configuração
-
-### appsettings.json
-```yaml
-AI:
-  Enabled: true|false
-  DefaultEngine: "plan_v1" | "legacy"
+{
+  "goalText": "Extrair timestamp e host e cpu em % do primeiro item",
+  "sampleInput": { "result": [{ "timestamp": "2026-01-01T00:00:00Z", "host": "srv01", "cpu": 0.73 }] },
+  "dslProfile": "ir",
+  "engine": "plan_v1",
+  "constraints": { "maxFields": 10 }
+}
 ```
 
-- `DefaultEngine` é usado quando o client não especifica `engine`.
-- Migração de `legacy` → `plan_v1` requer que o client suporte `plan` no preview (ver `previewRequest.schema.json`).
+Exemplo cURL (dev):
+
+```bash
+# 1) obter token
+TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"testpass123"}' | jq -r .access_token)
+
+# 2) chamar AI endpoint
+curl -s -X POST http://localhost:5000/api/v1/ai/dsl/generate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @specs/shared/examples/dslGenerateRequest.sample.json
+```
+
+### Request invariants
+
+- `dslProfile` MUST ser `"ir"`.
+- `engine` (se informado) MUST ser `"plan_v1"`.
+- `goalText` MUST ter tamanho mínimo (validação).
+- `sampleInput` MUST ser JSON válido e **não vazio**.
+
+### Response invariants
+
+- `plan` MUST existir e ser válido conforme `planV1.schema.json`.
+- `dsl.profile` MUST ser `"ir"`.
+- `dsl.text` SHOULD conter uma representação string do plano (JSON-string).
+- `outputSchema` SHOULD ser **self-contained** (sem `$ref` externo).
 
 ---
 
 ## Fallback por Templates (essencial em produção)
 
-Quando o LLM falha (JSON inválido, plano inválido, etc.), o backend deve produzir um plano determinístico via templates:
+Quando o LLM falha (timeout, rate limit, JSON inválido, plano inválido, etc.),
+o backend deve produzir um plano determinístico via templates:
 
 - **T1**: Select all fields
 - **T2**: Select specific fields (+ filtro opcional)
 - **T5**: GroupBy + Aggregate
 
-Detalhes e heurísticas: `specs/backend/07-plan-execution.md` e `specs/backend/05-transformation/plan-v1-spec.md`.
+O resultado ainda deve respeitar:
+- `dslProfile == "ir"`
+- `plan` válido
+- logs/telemetria indicando a origem do plano (`planSource = template:T*`)
+
+Detalhes e heurísticas:
+- `specs/backend/07-plan-execution.md`
+- `specs/backend/05-transformation/plan-v1-spec.md`
+
+---
+
+## Unauthenticated vs Authenticated
+
+- **Design-time (Studio / geração)**: requer auth (contexto do usuário, auditabilidade, custo LLM)
+- **Runtime Transform (determinístico)**: não faz chamadas LLM; apenas executa `plan` existente
+
