@@ -1,41 +1,79 @@
-# UI — AI Assistant (Gerar DSL/Schema)
+# UI — AI Assistant (Gerar DSL/Schema) — Profile `ir` (PlanV1)
 
-Data: 2026-01-02
+Data: 2026-01-08
 
-Objetivo: permitir que o usuário descreva o CSV em linguagem natural e gere uma sugestão de **DSL** e **Output Schema**.
+## Objetivo
+Permitir que o usuário descreva o CSV desejado em linguagem natural e gerar:
+- `dsl` (profile `ir` + `text` JSON)
+- `outputSchema`
+- `plan` (objeto) para preview/transform (quando retornado)
 
-## Ponto de entrada
-Tela **Process Version Editor** (ou modal) com aba/painel: **AI Assistant**.
+## Endpoint
+- `POST /api/v1/ai/dsl/generate`
+- Requer `Authorization: Bearer <token>`
 
 ## Campos (UI)
-- `sampleInputText` (textarea): JSON de exemplo colado pelo usuário.
-- `goalText` (textarea): “quero CSV com ...”
-- `dslProfile` (select): `jsonata` (default) / `jmespath`
-- `hints` (opcional)
+### Obrigatórios
+- `goalText` (textarea): descrição do CSV (min 10, max 4000)
+- `sampleInputText` (textarea code): JSON de exemplo (parse obrigatório)
+- `constraints` (Advanced section; defaults):
+  - `maxColumns` (number) default 50 (min 1, max 200)
+  - `allowTransforms` (checkbox) default true
+  - `forbidNetworkCalls` (checkbox) default true (deve permanecer true no mínimo)
+  - `forbidCodeExecution` (checkbox) default true (deve permanecer true no mínimo)
 
-> Antes de chamar a API, a UI faz `JSON.parse(sampleInputText)` e envia como `sampleInput` (objeto).
+### Opcionais
+- `hints.columns` (text): lista de colunas desejadas (ex.: "id,name,total")
+- `existingDsl` / `existingOutputSchema`: para iteração (se UI suportar “refinar”)
 
-## Fluxo
-1) Usuário cola `sampleInputText` (exemplo da API de origem)  
-2) Usuário escreve `goalText`  
-3) Seleciona `dslProfile` (default `jsonata`)  
-4) Clica **Generate**  
-5) UI chama `POST /api/v1/ai/dsl/generate`  
-6) UI exibe:
-   - DSL sugerida (read-only com botão "Copy")
-   - Schema sugerido (read-only)
-   - warnings + rationale
-7) Usuário clica **Apply** → UI preenche campos oficiais do Version Editor (`dsl` + `outputSchema`)  
-8) Usuário salva versão via endpoints normais de versions.
+> `dslProfile` NÃO é campo de UI. A UI sempre envia `dslProfile: "ir"`.
 
-## Estados (state machine)
-- idle
-- generating (loading)
-- generated (success)
-- failed (error)
-- disabled (AI desabilitada)
+## Request (montagem)
+1) `sampleInput = JSON.parse(sampleInputText)`
+2) `request: DslGenerateRequest` conforme `11-ui/ui-api-client-contract.md`
 
-## Tratamento de erro
-- 503 `AI_DISABLED`: banner “IA desabilitada nesta instalação”.
-- 503 `AI_PROVIDER_UNAVAILABLE`: “Serviço de IA indisponível”.
-- 400 validação: apontar campos inválidos.
+Exemplo:
+```json
+{
+  "goalText": "Gerar CSV com timestamp, hostName e cpuUsagePercent",
+  "sampleInput": { "result": [ { "timestamp":"...", "host":{"name":"a"}, "cpu":{"pct":42} } ] },
+  "dslProfile": "ir",
+  "constraints": {
+    "maxColumns": 50,
+    "allowTransforms": true,
+    "forbidNetworkCalls": true,
+    "forbidCodeExecution": true
+  },
+  "hints": { "columns": "timestamp,hostName,cpuUsagePercent" }
+}
+```
+
+## Response (render)
+Renderizar 3 painéis (read-only):
+- **DSL (ir)**: mostrar `dsl.text` (JSON string) formatado quando possível
+- **Plan**: mostrar `plan` (se vier) e manter em memória para preview
+- **Output Schema**: JSON formatado
+- (Opcional) **Example Rows**: grid/table
+
+## Apply
+Ao clicar **Apply**:
+- Preencher no Process Version Editor:
+  - `version.dsl.profile = "ir"`
+  - `version.dsl.text = <dsl.text>`
+  - `version.outputSchema = <outputSchema>`
+- Persistir também (state UI, não API):
+  - `ui.lastGeneratedPlan = result.plan` (para preview imediato)
+
+## Uso do `plan` no preview
+- Se `result.plan` existir, enviar em `POST /api/v1/preview/transform` (ver page spec).
+- Se o usuário abrir uma versão persistida que não tem `plan` em memória:
+  - Se `dsl.profile === "ir"`, tentar `JSON.parse(dsl.text)` para derivar `plan`.
+  - Se parse falhar, enviar `plan=null` e tratar erro retornado.
+
+## Erros
+- 401: redirect `/login`
+- 403: snackbar “Sem permissão…”
+- 503 `AI_DISABLED`: banner “IA desabilitada nesta instalação”
+- 503 `AI_PROVIDER_UNAVAILABLE`: “Serviço de IA indisponível”
+- 429: “Serviço ocupado; tente novamente.”
+- 400 validação (goal curto / constraints inválidas): apontar campos na UI

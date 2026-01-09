@@ -1,33 +1,30 @@
-# Delta — UI: Login e controle de acesso
+# UI — Login & Access Control
 
-## Rota /login
-### Campos
-- username
-- password
+Data: 2026-01-08
 
-### Ações
-- submit chama `POST /api/auth/token`
-- sucesso: salvar token, navegar para home
-- 401: exibir “Usuário ou senha inválidos”
-- 429: exibir “Muitas tentativas, tente mais tarde”
+## Rota
+- `/login`
 
-### Regras
-- não persistir senha
-- limpar campo senha em falha
-- não logar senha/token
+## Campos
+- `username` (required)
+- `password` (required)
+
+## Ações
+- Submit:
+  - chama `POST /api/auth/token`
+  - em sucesso:
+    - salvar token
+    - navegar para `/dashboard` (ou rota inicial do app)
+  - em 401:
+    - mostrar “Usuário ou senha inválidos.”
+    - limpar campo password
+  - em 429:
+    - mostrar “Muitas tentativas. Tente mais tarde.”
 
 ## Controle de acesso (UX)
-### Admin-only UI
-- Menus/ações de CRUD (create/edit/delete) devem ficar visíveis somente para `Metrics.Admin`.
-- Reader deve conseguir navegar/usar apenas telas de leitura/preview.
+- **Admin-only**:
+  - botões e menus de Create/Edit/Delete devem aparecer só para Admin
+- **Reader**:
+  - pode visualizar listas, detalhes e executar preview, mas sem CRUD
 
-> Nota: isto é apenas UX. O backend é a autoridade final (403).
-
-## Tratamento de erros
-- 401 em qualquer request: logout automático + redirect /login
-- 403: snackbar e não desmontar a sessão
-- 429: snackbar
-
-## Estados de tela
-- Exibir usuário logado (sub/displayName) no header.
-- Botão Logout.
+> Importante: isso é só UX. O backend deve aplicar 403.

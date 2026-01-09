@@ -1,24 +1,22 @@
-# Release Notes — Spec Deck Delta (IR/OpenRouter)
+# Release Notes — Frontend Spec Deck
 
-Data: 2026-01-07
+Data: 2026-01-08
+Versão: frontend-align-ir-auth-v1
 
-## Added
+## Principais mudanças
+- `/api/*` → `/api/v1/*` para endpoints de negócio e AI (exceto `/api/auth/token`).
+- AI Assistant:
+  - `dslProfile` fixo em `ir`
+  - `constraints` obrigatórias (com defaults)
+  - response inclui `plan` e UI deve preservá-lo para preview.
+- Preview/Transform:
+  - request aceita `plan` (preferir enviar sempre que possível).
+- Autenticação mínima (LocalJwt):
+  - `/login`, interceptor Bearer, logout automático em 401.
+- Controle de acesso Admin/Reader:
+  - UI esconde ações admin-only e aplica guards.
 
-- Docs de setup do OpenRouter e troubleshooting.
-- Doc completo de abstração do LLM provider (`IAiProvider`) e padrão de erros/retry.
-- Docs de DI (incluindo `AddHttpClient("AI")`) e configuração por ambiente.
-- Docs específicos dos testes de integração IT04 (AI Generate) e IT13 (PlanV1 flow).
-- `docs/TECH_DEBT.md` para registrar histórico e pendências.
-
-## Changed
-
-- `dslProfile` → agora **somente `ir`** (JSONata removido).
-- `DslGenerateRequest.engine` → agora **somente `plan_v1`**.
-- Exemplos e schemas atualizados para refletir `ir` + `plan`.
-- AI endpoints documentados como **auth-required** (Bearer JWT).
-
-## Deprecated / Removed (behavior)
-
-- Profile `jsonata` e engine `legacy` removidos do backend (requests devem receber 400/validation).
-- Configuração `GeminiConfig` removida de `appsettings*`.
+## Breaking changes (UI)
+- Remover seletor de `dslProfile` (jsonata/jmespath).
+- DSL editor deve tratar DSL como **JSON (IR/plan)**, não expressão.
 

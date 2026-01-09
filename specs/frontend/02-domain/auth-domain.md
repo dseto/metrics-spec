@@ -1,31 +1,28 @@
-# Delta — Domain: Auth (Frontend)
+# Auth Domain (Frontend)
 
-## Modelos (contratos internos de UI)
-### AuthUser
-Representa o usuário autenticado no frontend (independente do provedor).
+Data: 2026-01-08
 
-Campos mínimos:
-- `sub: string` (id do usuário)
-- `roles: string[]` (sempre roles normalizadas do app: `app_roles`)
-- `displayName?: string`
-- `email?: string`
+## Objetivo
+Definir conceitos mínimos de autenticação/autorização para o frontend (uso interno), alinhado ao backend atual.
 
-### AuthSession
-Representa a sessão atual.
-- `accessToken: string`
-- `expiresAtUtc?: string` (opcional; derivado do JWT ou do backend)
-- `user?: AuthUser` (populado via /auth/me ou via parse do JWT)
+## Conceitos
+### Access Token (JWT)
+- A UI recebe um token (string) ao fazer login.
+- A UI envia o token em **todas** as chamadas para `/api/v1/*` via header:
+  - `Authorization: Bearer <access_token>`
 
-## Invariantes
-1) O frontend deve trabalhar somente com roles normalizadas:
-   - `Metrics.Admin`
-   - `Metrics.Reader`
-2) O frontend nunca valida assinatura do JWT (isso é responsabilidade do backend).
-3) O frontend nunca persiste senha.
-4) O frontend não deve logar tokens.
+### Subject (usuário)
+- A UI não é responsável por validar assinatura do JWT.
+- A UI **pode** ler claims (base64) somente para UX (exibir usuário/roles).  
+  O backend é a fonte de verdade (403/401).
 
-## Fonte de roles
-Preferência:
-1) `GET /api/auth/me` (se existir) => `{ sub, roles }`
-Fallback:
-2) parse do JWT para extrair `sub` e `app_roles`
+### Roles (autorização)
+- **Admin**: pode criar/editar/deletar (CRUD) objetos de configuração.
+- **Reader**: pode navegar e visualizar (read/preview), sem CRUD.
+
+> Nomes de roles no token: use as strings definidas no backend (ex.: `Metrics.Admin`, `Metrics.Reader`).
+
+## Princípios
+- Não guardar senha.
+- Token deve ser individual (um token por usuário).
+- Em caso de dúvida sobre permissão: deixar o backend decidir e tratar 403 na UI.

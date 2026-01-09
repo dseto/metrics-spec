@@ -1,190 +1,125 @@
-# UI API Client Contract — DTOs, Normalização e Regras
+# UI API Client Contract — DTOs, Endpoints, Normalização, Auth
 
-Data: 2026-01-02
+Data: 2026-01-08
 
-Objetivo: especificar o client HTTP da UI (tipos, normalização, erros) para reduzir variação na implementação.
+## Base URL
+- Endpoints versionados: `/api/v1`
+- Auth endpoint: `/api/auth/token`
+- Health: `/health`
+
+## Headers
+- Sempre: `Content-Type: application/json`
+- Opcional: `X-Correlation-Id` (UUID por request, para troubleshooting)
+- Para `/api/v1/*`: `Authorization: Bearer <access_token>` (via interceptor)
 
 ---
 
-## Base URL e headers
-- Base URL: carregada via **RuntimeConfigService** (ex.: `config.json`), com fallback para `/api` quando aplicável.
-  - Exemplo: `apiBaseUrl = http://localhost:8080/api/v1`
-- Header padrão: `Content-Type: application/json`
-- Header **obrigatório**: `X-Correlation-Id` (UUID gerado pelo client para rastreamento)
+## DTOs essenciais (TypeScript)
 
----
-
-## Tipos (DTOs)
-
-
-### Connector (extensão: API Token)
-- `apiToken`: write-only (string|null). Nunca vem no GET.
-- `hasApiToken`: read-only boolean para indicar presença.
-- `apiTokenSpecified`: write-only boolean necessário no PUT para distinguir omitido vs null.
-
-**Regra de envio (PUT)**
-- manter token: não enviar `apiToken` e não enviar `apiTokenSpecified`
-- remover: enviar `{ apiTokenSpecified: true, apiToken: null }`
-- substituir: enviar `{ apiTokenSpecified: true, apiToken: "<token>" }`
-
-> Derivados do OpenAPI em `specs/shared/openapi/config-api.yaml`.
-
-### ProcessDto
+### DslDto
 ```ts
-type OutputDestination =
-  | { type: 'LocalFileSystem'; local: { basePath: string } }
-  | { type: 'AzureBlobStorage'; blob: { connectionStringRef: string; container: string; pathPrefix?: string } };
-
-type ProcessDto = {
-  id: string;
-  name: string;
-  description?: string | null;
-  status: 'Draft'|'Active'|'Disabled';
-  connectorId: string;
-  tags?: string[] | null;
-  outputDestinations: OutputDestination[];
-};
-```
-
-### ProcessVersionDto
-```ts
-type SourceRequestDto = {
-  method: 'GET'|'POST'|'PUT'|'DELETE';
-  path: string;
-  headers?: Record<string,string> | null;
-  queryParams?: Record<string,string> | null;
-};
-
-type DslDto = {
-  profile: 'jsonata'|'jmespath'|'custom';
+export type DslDto = {
+  profile: 'ir';
+  /** JSON string de Plan IR (ou outra IR do futuro). */
   text: string;
 };
+```
 
-type ProcessVersionDto = {
-  processId: string;
-  version: number;     // 1..n
-  enabled: boolean;
-  sourceRequest: SourceRequestDto;
-  dsl: DslDto;
-  outputSchema: any;   // JSON object (JSON Schema)
-  sampleInput?: any;   // JSON sample (optional)
+### DslGenerateRequest
+Espelhar `specs/shared/domain/schemas/dslGenerateRequest.schema.json`.
+
+```ts
+export type DslGenerateConstraints = {
+  maxColumns: number;           // default 50
+  allowTransforms: boolean;     // default true
+  forbidNetworkCalls: boolean;  // default true
+  forbidCodeExecution: boolean; // default true
+};
+
+export type DslGenerateRequest = {
+  goalText: string;
+  sampleInput: unknown;         // objeto (JSON.parse do textarea)
+  dslProfile: 'ir';
+  constraints: DslGenerateConstraints;
+
+  // opcionais:
+  hints?: { columns?: string };
+  existingDsl?: DslDto | null;
+  existingOutputSchema?: unknown | null;
+  engine?: 'plan_v1';           // opcional (pode omitir)
 };
 ```
 
-### ConnectorDto
+### DslGenerateResult
+Espelhar `specs/shared/domain/schemas/dslGenerateResult.schema.json`.
+
 ```ts
-type ConnectorDto = {
-  id: string;
-  name: string;
-  baseUrl: string;
-
-  // Delta 1.2.0
-  authType: 'NONE' | 'BEARER' | 'API_KEY' | 'BASIC';
-  apiKeyLocation?: 'HEADER' | 'QUERY';
-  apiKeyName?: string;
-  basicUsername?: string;
-
-  // secrets write-only (PUT semantics via *Specified)
-  apiToken?: string | null;
-  apiTokenSpecified?: boolean;
-  hasApiToken?: boolean;
-
-  apiKeyValue?: string | null;
-  apiKeySpecified?: boolean;
-  hasApiKey?: boolean;
-
-  basicPassword?: string | null;
-  basicPasswordSpecified?: boolean;
-  hasBasicPassword?: boolean;
-
-  requestDefaults?: {
-    method?: 'GET' | 'POST';
-    headers?: Record<string, string>;
-    queryParams?: Record<string, string>;
-    body?: any;
-    contentType?: string;
-  };
-
-  timeoutSeconds: number;
-  enabled?: boolean;
+export type DslGenerateResult = {
+  dsl: DslDto;
+  outputSchema: unknown;
+  exampleRows?: unknown[];
+  plan?: unknown | null;        // Plan IR (objeto)
+  rationale: string;
+  warnings: string[];
+  modelInfo?: unknown;
 };
 ```
 
-### PreviewTransform
-```ts
-type PreviewTransformRequest = {
-  dsl: DslDto;
-  outputSchema: any;
-  sampleInput: any;
-};
-type ValidationErrorItem = { path: string; message: string; kind?: string | null };
+### PreviewTransformRequest
+Espelhar `specs/shared/domain/schemas/previewRequest.schema.json`.
 
-type PreviewTransformResponse = {
+```ts
+export type PreviewTransformRequest = {
+  sampleInput: unknown;
+  dsl: DslDto;
+  outputSchema: unknown;
+  plan?: unknown | null; // enviar quando disponível (preferido)
+};
+```
+
+### PreviewTransformResponse
+(Manter conforme backend atual. Se houver schema no shared, preferir o schema.)
+```ts
+export type ValidationErrorItem = { path: string; message: string; kind?: string | null };
+export type PreviewTransformResponse = {
   isValid: boolean;
   errors: ValidationErrorItem[];
-  output: any | null;
+  output: unknown | null;
   previewCsv?: string | null;
 };
 ```
 
-### ApiError
-```ts
-type ApiErrorDetail = { path: string; message: string };
-type ApiError = {
-  code: string;
-  message: string;
-  details?: ApiErrorDetail[] | null;
-  correlationId: string;
-  executionId?: string | null;
-};
-```
+---
+
+## Endpoints (frontend)
+
+### AI: gerar DSL/Schema
+- `POST /api/v1/ai/dsl/generate`
+- Auth: **Bearer obrigatório**
+
+### Preview/Transform
+- `POST /api/v1/preview/transform`
+- Auth: seguir padrão do backend (recomendação: proteger tudo sob `/api/v1/*`)
+
+### CRUD (exemplos; verificar OpenAPI)
+- `/api/v1/processes`
+- `/api/v1/processes/{processId}/versions`
+- `/api/v1/connectors`
 
 ---
 
-## Endpoints (client)
-
-### ProcessesClient
-- `list()` -> GET `/processes`
-- `create(dto)` -> POST `/processes`
-- `get(id)` -> GET `/processes/{id}`
-- `update(id, dto)` -> PUT `/processes/{id}`
-- `delete(id)` -> DELETE `/processes/{id}`
-
-### ProcessVersionsClient
-- `create(processId, dto)` -> POST `/processes/{id}/versions`
-- `get(processId, version)` -> GET `/processes/{id}/versions/{version}`
-- `update(processId, version, dto)` -> PUT `/processes/{id}/versions/{version}`
-
-### ConnectorsClient
-- `list()` -> GET `/connectors`
-- `create(dto)` -> POST `/connectors`
-
-### PreviewClient
-- `transform(req)` -> POST `/preview/transform`
-
-### AiClient (design-time)
-- `generate(req)` -> POST `/ai/dsl/generate`
+## Normalização
+- `trim()` em strings de campos editáveis: id, name, connectorId, baseUrl, authRef, path
+- Bloquear Save se obrigatório ficar vazio após trim.
+- `sampleInputText` (textarea):
+  - parse obrigatório (erro “JSON inválido”)
+  - nunca chamar API com JSON inválido
 
 ---
 
-## Normalização antes de enviar (client-side)
-
-### Strings
-	Aplicar `trim()` em **todos** os campos de string antes de enviar para a API:
-	- `id`, `name`, `description`, `connectorId`, `baseUrl`, `path`, `tags[]`
-	
-	Rejeitar string vazia após trim para campos obrigatórios.
-	
-	### Key-Value Maps (headers, queryParams)
-	- Remover entradas onde a chave é vazia após `trim()`.
-	- Aplicar `trim()` nas chaves e valores restantes.
-
-### sampleInput
-- A UI pode manter `sampleInputText` como texto (textarea).
-- Antes de chamar `preview/transform` ou `ai/dsl/generate`: `JSON.parse(sampleInputText)` e enviar como objeto.
-
-### OutputDestinations
-- Bloquear Save se:
-  - `LocalFileSystem.local.basePath` vazio
-  - `AzureBlobStorage.blob.connectionStringRef` vazio
-  - `AzureBlobStorage.blob.container` vazio
+## Tratamento de erros (client)
+- 400 validação: mapear para erros por campo quando possível
+- 401: logout automático + redirect `/login`
+- 403: snackbar “Sem permissão…”
+- 429: snackbar “Muitas requisições; tente novamente.”
+- 5xx: ErrorBanner + Retry (quando aplicável)

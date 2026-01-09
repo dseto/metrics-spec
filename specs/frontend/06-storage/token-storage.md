@@ -1,24 +1,26 @@
-# Delta — Storage: Armazenamento do token (Frontend)
+# Token Storage
 
-## Padrão (recomendado)
-- `sessionStorage`
-  - key: `metrics_access_token`
-  - key opcional: `metrics_user` (cache de AuthUser; pode derivar de /auth/me ou JWT)
+Data: 2026-01-08
 
-Vantagens:
-- some ao fechar o browser
-- simples de implementar
-
-Riscos:
-- vulnerável a XSS (aceito no delta). Mitigações sugeridas:
-  - depender o mínimo de HTML dinâmico
-  - sanitização Angular (default) + revisão de dependências
-  - CSP se possível no ambiente
-
-## Alternativas
-- memória apenas (mais seguro, perde no refresh)
-- localStorage (não recomendado)
+## Objetivo
+Definir onde e como o token é armazenado no frontend.
 
 ## Regras
-- nunca armazenar senha
-- não armazenar refresh tokens (não existe no delta)
+- Não armazenar senha.
+- Preferir `localStorage` para persistir sessão em reload.
+- Chave padrão:
+  - `metrics.auth.access_token`
+- Em logout ou 401:
+  - remover token do storage.
+
+## API sugerida (TypeScript)
+```ts
+interface TokenStorage {
+  get(): string | null;
+  set(token: string): void;
+  clear(): void;
+}
+```
+
+## Observações
+- Se houver exigência futura de maior segurança, migrar para cookies HttpOnly (quando Okta/Entra entrarem).
